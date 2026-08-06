@@ -66,6 +66,7 @@ services/agent-*/.next
 !posthog
 !posthog.json
 !products
+!proto
 !requirements-dev.txt
 !requirements.txt
 !rust
