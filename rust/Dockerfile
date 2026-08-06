@@ -8,7 +8,7 @@ FROM base AS planner
 WORKDIR /app/rust
 ARG BIN
 ARG BUILD_FEATURES=""
-ENV PROTO_ROOT=../proto
+ENV PROTO_ROOT=../../proto
 
 COPY rust/ .
 COPY proto/ ../proto/
@@ -28,7 +28,7 @@ ARG SCCACHE_WEBDAV_KEY_PREFIX
 # RUSTFLAGS stays unset so .cargo/config.toml keeps applying.
 ARG EXTRA_RUSTFLAGS=""
 ARG EXTRA_CFLAGS=""
-ENV PROTO_ROOT=../proto SCCACHE_WEBDAV_KEY_PREFIX=${SCCACHE_WEBDAV_KEY_PREFIX}
+ENV PROTO_ROOT=../../proto SCCACHE_WEBDAV_KEY_PREFIX=${SCCACHE_WEBDAV_KEY_PREFIX}
 
 # Ensure working C compile setup (not installed by default in arm64 images)
 # libclang-dev is required for bindgen (used by librocksdb-sys)
