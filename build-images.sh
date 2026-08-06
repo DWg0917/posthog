@@ -54,7 +54,7 @@ for svc in "${RUST_SERVICES[@]}"; do
         -t "${REGISTRY}/${svc}:${TAG}" \
         -f rust/Dockerfile \
         --build-arg BIN="${svc}" \
-        rust/
+        .
     echo "  -> ${REGISTRY}/${svc}:${TAG}"
 done
 
