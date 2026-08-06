@@ -368,21 +368,13 @@ class Organization(ModelActivityMixin, UUIDTModel):
 
         self.available_product_features = []
 
-        # Self hosted legacy license so we just sync the license features
-        # Demo gets all features
-        if settings.DEMO or "generate_demo_data" in sys.argv[1:2]:
-            features = License.PLANS.get(License.ENTERPRISE_PLAN, [])
-            self.available_product_features = [
-                {"key": feature, "name": " ".join(feature.split(" ")).capitalize()} for feature in features
-            ]
-        else:
-            # Otherwise, try to find a valid license on this instance
-            license = License.objects.first_valid()
-            if license:
-                features = License.PLANS.get(License.ENTERPRISE_PLAN, [])
-                self.available_product_features = [
-                    {"key": feature, "name": " ".join(feature.split(" ")).capitalize()} for feature in features
-                ]
+        # Self-hosted: always grant all Enterprise features.
+        # Cloud deployments are handled above via billing service, so this only
+        # affects self-hosted instances where there is no license server.
+        features = License.PLANS.get(License.ENTERPRISE_PLAN, [])
+        self.available_product_features = [
+            {"key": feature, "name": " ".join(feature.split(" ")).capitalize()} for feature in features
+        ]
 
         return self.available_product_features
 

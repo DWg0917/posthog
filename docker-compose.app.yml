@@ -1,0 +1,267 @@
+# docker-compose.app.yml
+# Application layer: deploy on cheaper machines.
+#
+# Usage:
+#   export DATA_LAYER_HOST=192.168.1.100
+#   docker compose -f docker-compose.hobby.yml -f docker-compose.app.yml up -d
+#
+# Data-layer services (db, redis, clickhouse, zookeeper, kafka) are disabled here.
+# They run on the data machine via docker-compose.data.yml.
+
+services:
+    # ================================================================
+    # Disable data-layer services (run on data machine)
+    # ================================================================
+    db:
+        deploy:
+            replicas: 0
+    redis7:
+        deploy:
+            replicas: 0
+    clickhouse:
+        deploy:
+            replicas: 0
+    zookeeper:
+        deploy:
+            replicas: 0
+    kafka:
+        deploy:
+            replicas: 0
+    elasticsearch:
+        deploy:
+            replicas: 0
+
+    # ================================================================
+    # Proxy
+    # ================================================================
+    proxy:
+        restart: always
+        ports:
+            - '80:80'
+            - '443:443'
+
+    # ================================================================
+    # Web + Worker
+    # ================================================================
+    web:
+        image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+        restart: always
+        deploy:
+            replicas: ${WEB_REPLICAS:-2}
+            resources:
+                limits:
+                    memory: 4G
+                reservations:
+                    memory: 2G
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            CLICKHOUSE_HOST: '${DATA_LAYER_HOST:-clickhouse}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            SITE_URL: https://${DOMAIN}
+            SECRET_KEY: ${POSTHOG_SECRET}
+            ENCRYPTION_SALT_KEYS: ${ENCRYPTION_SALT_KEYS}
+            DEPLOYMENT: 'production'
+            PERSONHOG_ADDR: '${DATA_LAYER_HOST:-personhog-router}:50052'
+
+    worker:
+        image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+        restart: always
+        deploy:
+            replicas: ${WORKER_REPLICAS:-2}
+            resources:
+                limits:
+                    memory: 4G
+                reservations:
+                    memory: 2G
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            CLICKHOUSE_HOST: '${DATA_LAYER_HOST:-clickhouse}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            SITE_URL: https://${DOMAIN}
+            SECRET_KEY: ${POSTHOG_SECRET}
+            ENCRYPTION_SALT_KEYS: ${ENCRYPTION_SALT_KEYS}
+            DEPLOYMENT: 'production'
+            PERSONHOG_ADDR: '${DATA_LAYER_HOST:-personhog-router}:50052'
+
+    # ================================================================
+    # Node.js Ingestion
+    # ================================================================
+    plugins:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        deploy:
+            replicas: ${PLUGINS_REPLICAS:-2}
+            resources:
+                limits:
+                    memory: 4G
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}'
+
+    ingestion-general:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        deploy:
+            replicas: ${INGESTION_GENERAL_REPLICAS:-2}
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    ingestion-sessionreplay:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    recording-api:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            CLICKHOUSE_HOST: '${DATA_LAYER_HOST:-clickhouse}'
+
+    ingestion-error-tracking:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    ingestion-logs:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    ingestion-traces:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    # ================================================================
+    # Rust Services
+    # ================================================================
+    capture:
+        restart: always
+        deploy:
+            replicas: ${CAPTURE_REPLICAS:-2}
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    capture-ai:
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    capture-logs:
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    replay-capture:
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    feature-flags:
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    personhog-replica:
+        restart: always
+        environment:
+            PRIMARY_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+
+    personhog-router:
+        restart: always
+
+    property-defs-rs:
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    hypercache-server:
+        restart: always
+        environment:
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    cyclotron-janitor:
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+
+    cymbal:
+        restart: always
+        environment:
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}/'
+
+    # ================================================================
+    # Object Storage (local to app machine)
+    # ================================================================
+    objectstorage:
+        restart: always
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+
+    seaweedfs:
+        restart: always
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+
+    # ================================================================
+    # Temporal Workers (app layer)
+    # ================================================================
+    temporal-django-worker:
+        restart: always
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            CLICKHOUSE_HOST: '${DATA_LAYER_HOST:-clickhouse}'
+            REDIS_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}'
+            KAFKA_HOSTS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'
+            TEMPORAL_HOST: '${DATA_LAYER_HOST:-temporal}'
+
+    # ================================================================
+    # Async Migrations Check
+    # ================================================================
+    asyncmigrationscheck:
+        environment:
+            DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@${DATA_LAYER_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-posthog}'
+            CLICKHOUSE_HOST: '${DATA_LAYER_HOST:-clickhouse}'
+
+    # ================================================================
+    # Monitoring UIs (localhost only)
+    # ================================================================
+    flower:
+        extends:
+            file: docker-compose.base.yml
+            service: flower
+        ports:
+            - '127.0.0.1:5555:5555'
+        environment:
+            CELERY_BROKER_URL: 'redis://${DATA_LAYER_HOST:-redis7}:${REDIS_PORT:-6379}'
+
+    kafka_ui:
+        extends:
+            file: docker-compose.base.yml
+            service: kafka_ui
+        ports:
+            - '127.0.0.1:8080:8080'
+        environment:
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: '${DATA_LAYER_HOST:-kafka}:${KAFKA_PORT:-9092}'

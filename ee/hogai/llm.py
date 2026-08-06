@@ -259,6 +259,12 @@ class MaxChatAnthropic(MaxChatMixin, ChatAnthropic):
     If True, bypasses egress proxies (HTTP_PROXY/etc)—use for private LLM gateway; if False, default behavior.
     """
 
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Use custom Anthropic base URL from settings if caller didn't provide one.
+        if not self.base_url and settings.ANTHROPIC_BASE_URL:
+            self.base_url = settings.ANTHROPIC_BASE_URL
+
     @cached_property
     def _client(self) -> anthropic.Client:
         if not self.bypass_proxy:

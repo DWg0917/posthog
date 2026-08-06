@@ -1220,6 +1220,13 @@ AI_GATEWAY_INTERNAL_TOKEN = get_from_env("AI_GATEWAY_INTERNAL_TOKEN", "")
 AI_GATEWAY_URL = get_from_env("AI_GATEWAY_URL", "")
 AI_GATEWAY_API_KEY = get_from_env("AI_GATEWAY_API_KEY", "")
 
+# Custom AI provider base URLs for self-hosted deployments.
+# Set these to point to API-compatible providers (e.g., Xiaomi MiMo, DeepSeek).
+# OpenAI-compatible: ChatOpenAI reads OPENAI_BASE_URL automatically.
+# Anthropic-compatible: passed explicitly to ChatAnthropic constructor.
+OPENAI_BASE_URL: str = get_from_env("OPENAI_BASE_URL", "")
+ANTHROPIC_BASE_URL: str = get_from_env("ANTHROPIC_BASE_URL", "")
+
 # Sharing configuration settings
 SHARING_TOKEN_GRACE_PERIOD_SECONDS = 60 * 5  # 5 minutes
 

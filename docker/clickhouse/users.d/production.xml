@@ -1,0 +1,30 @@
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- Max memory per single query (from env, default 10GB) -->
+            <max_memory_usage from_env="CLICKHOUSE_MAX_MEMORY_PER_QUERY"/>
+
+            <!-- Threads per query (from env, default 16) -->
+            <max_threads from_env="CLICKHOUSE_MAX_THREADS"/>
+
+            <!-- Per-user concurrent query limit -->
+            <max_concurrent_queries_for_user>100</max_concurrent_queries_for_user>
+
+            <!-- Load balancing across replicas -->
+            <load_balancing>random</load_balancing>
+
+            <!-- Mutation and DDL settings -->
+            <allow_nondeterministic_mutations>1</allow_nondeterministic_mutations>
+            <enable_materialized_cte>1</enable_materialized_cte>
+            <async_insert>0</async_insert>
+            <distributed_product_mode>global</distributed_product_mode>
+            <enable_parallel_replicas>0</enable_parallel_replicas>
+            <max_parallel_replicas>1</max_parallel_replicas>
+            <allow_experimental_window_functions>1</allow_experimental_window_functions>
+            <allow_suspicious_low_cardinality_types>1</allow_suspicious_low_cardinality_types>
+            <insert_distributed_sync>1</insert_distributed_sync>
+            <throw_on_max_partitions_per_insert_block>false</throw_on_max_partitions_per_insert_block>
+            <number_of_mutations_to_throw>1</number_of_mutations_to_throw>
+        </default>
+    </profiles>
+</clickhouse>

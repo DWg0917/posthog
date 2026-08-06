@@ -1,0 +1,592 @@
+# docker-compose.data.yml
+# Data layer: deploy on high-performance machine.
+#
+# Usage:
+#   Single node ClickHouse:
+#     docker compose -f docker-compose.hobby.yml -f docker-compose.data.yml up -d
+#
+#   2 shards x 2 replicas ClickHouse:
+#     cp docker/clickhouse/config.d/cluster-2x2.xml docker/clickhouse/config.d/cluster.xml
+#     cp docker/clickhouse/macros/ch1.xml docker/clickhouse/macros/current.xml
+#     docker compose -f docker-compose.hobby.yml -f docker-compose.data.yml up -d
+
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: '50m'
+        max-file: '5'
+
+services:
+    # ================================================================
+    # PostgreSQL
+    # ================================================================
+    db:
+        command:
+            - postgres
+            - -c
+            - shared_buffers=${POSTGRES_SHARED_BUFFERS:-4GB}
+            - -c
+            - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-12GB}
+            - -c
+            - work_mem=${POSTGRES_WORK_MEM:-64MB}
+            - -c
+            - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-1GB}
+            - -c
+            - max_connections=${POSTGRES_MAX_CONNECTIONS:-200}
+            - -c
+            - wal_level=replica
+            - -c
+            - max_wal_senders=3
+            - -c
+            - max_replication_slots=3
+            - -c
+            - random_page_cost=1.1
+            - -c
+            - effective_io_concurrency=200
+            - -c
+            - min_wal_size=1GB
+            - -c
+            - max_wal_size=4GB
+            - -c
+            - log_min_duration_statement=1000
+            - -c
+            - shared_preload_libraries='pg_stat_statements'
+        deploy:
+            resources:
+                limits:
+                    memory: 16G
+                reservations:
+                    memory: 8G
+
+    # ================================================================
+    # Redis Master
+    # ================================================================
+    redis7:
+        image: redis:7.2-alpine
+        container_name: redis-master
+        restart: always
+        command: >
+            redis-server
+            --maxmemory ${REDIS_MAXMEMORY:-2gb}
+            --maxmemory-policy allkeys-lru
+            --save 900 1
+            --save 300 10
+            --save 60 10000
+            --appendonly yes
+            --appendfsync everysec
+            --tcp-backlog 511
+            --timeout 300
+            --tcp-keepalive 60
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+                reservations:
+                    memory: 2G
+        volumes:
+            - redis7-data:/data
+
+    # ================================================================
+    # Redis Replica
+    # ================================================================
+    redis-replica:
+        image: redis:7.2-alpine
+        restart: always
+        command: >
+            redis-server
+            --replicaof redis-master 6379
+            --maxmemory ${REDIS_MAXMEMORY:-2gb}
+            --maxmemory-policy allkeys-lru
+            --appendonly yes
+            --appendfsync everysec
+        depends_on:
+            - redis7
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+
+    # ================================================================
+    # Redis Sentinel x3
+    # ================================================================
+    redis-sentinel-1:
+        image: redis:7.2-alpine
+        restart: always
+        command: >
+            sh -c '
+            echo "sentinel monitor mymaster redis-master 6379 2" > /tmp/sentinel.conf &&
+            echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+            echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+            echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+            redis-sentinel /tmp/sentinel.conf'
+        depends_on:
+            - redis7
+            - redis-replica
+
+    redis-sentinel-2:
+        image: redis:7.2-alpine
+        restart: always
+        command: >
+            sh -c '
+            echo "sentinel monitor mymaster redis-master 6379 2" > /tmp/sentinel.conf &&
+            echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+            echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+            echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+            redis-sentinel /tmp/sentinel.conf'
+        depends_on:
+            - redis7
+            - redis-replica
+
+    redis-sentinel-3:
+        image: redis:7.2-alpine
+        restart: always
+        command: >
+            sh -c '
+            echo "sentinel monitor mymaster redis-master 6379 2" > /tmp/sentinel.conf &&
+            echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+            echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+            echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+            redis-sentinel /tmp/sentinel.conf'
+        depends_on:
+            - redis7
+            - redis-replica
+
+    # ================================================================
+    # Zookeeper 3-node cluster
+    # ================================================================
+    zookeeper:
+        image: zookeeper:3.7.0
+        restart: always
+        environment:
+            ZOO_MY_ID: 1
+            ZOO_SERVERS: server.1=zookeeper:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+            ZOO_AUTOPURGE_PURGEINTERVAL: 1
+            ZOO_AUTOPURGE_SNAPRETAINCOUNT: 5
+            ZOO_MAX_CLIENT_CNXNS: 1000
+            ZOO_TICK_TIME: 2000
+            ZOO_INIT_LIMIT: 10
+            ZOO_SYNC_LIMIT: 5
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
+        volumes:
+            - zookeeper-data:/data
+            - zookeeper-datalog:/datalog
+            - zookeeper-logs:/logs
+
+    zookeeper-2:
+        image: zookeeper:3.7.0
+        restart: always
+        environment:
+            ZOO_MY_ID: 2
+            ZOO_SERVERS: server.1=zookeeper:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+            ZOO_AUTOPURGE_PURGEINTERVAL: 1
+            ZOO_AUTOPURGE_SNAPRETAINCOUNT: 5
+            ZOO_MAX_CLIENT_CNXNS: 1000
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
+        volumes:
+            - zookeeper-2-data:/data
+            - zookeeper-2-datalog:/datalog
+
+    zookeeper-3:
+        image: zookeeper:3.7.0
+        restart: always
+        environment:
+            ZOO_MY_ID: 3
+            ZOO_SERVERS: server.1=zookeeper:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+            ZOO_AUTOPURGE_PURGEINTERVAL: 1
+            ZOO_AUTOPURGE_SNAPRETAINCOUNT: 5
+            ZOO_MAX_CLIENT_CNXNS: 1000
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
+        volumes:
+            - zookeeper-3-data:/data
+            - zookeeper-3-datalog:/datalog
+
+    # ================================================================
+    # Kafka (Redpanda) 3-broker cluster
+    # ================================================================
+    kafka:
+        image: docker.io/redpandadata/redpanda:v25.1.9
+        restart: always
+        command:
+            - redpanda
+            - start
+            - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+            - --advertise-kafka-addr internal://kafka:9092,external://localhost:19092
+            - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+            - --advertise-pandaproxy-addr internal://kafka:8082,external://localhost:18082
+            - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+            - --rpc-addr kafka:33145
+            - --advertise-rpc-addr kafka:33145
+            - --smp 4
+            - --memory 6G
+            - --reserve-memory 1G
+            - --overprovisioned
+            - --set redpanda.empty_seed_starts_cluster=false
+            - --seeds kafka:33145,kafka-2:33146,kafka-3:33147
+            - --set redpanda.auto_create_topics_enabled=true
+        environment:
+            ALLOW_PLAINTEXT_LISTENER: 'true'
+        healthcheck:
+            test: curl -f http://localhost:9644/v1/status/ready || exit 1
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: 8G
+                reservations:
+                    memory: 4G
+        volumes:
+            - kafka-data:/var/lib/redpanda/data
+
+    kafka-2:
+        image: docker.io/redpandadata/redpanda:v25.1.9
+        restart: always
+        command:
+            - redpanda
+            - start
+            - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19093
+            - --advertise-kafka-addr internal://kafka-2:9092,external://localhost:19093
+            - --rpc-addr kafka-2:33146
+            - --advertise-rpc-addr kafka-2:33146
+            - --smp 4
+            - --memory 6G
+            - --reserve-memory 1G
+            - --overprovisioned
+            - --set redpanda.empty_seed_starts_cluster=false
+            - --seeds kafka:33145,kafka-2:33146,kafka-3:33147
+            - --set redpanda.auto_create_topics_enabled=true
+        environment:
+            ALLOW_PLAINTEXT_LISTENER: 'true'
+        deploy:
+            resources:
+                limits:
+                    memory: 8G
+        volumes:
+            - kafka-2-data:/var/lib/redpanda/data
+
+    kafka-3:
+        image: docker.io/redpandadata/redpanda:v25.1.9
+        restart: always
+        command:
+            - redpanda
+            - start
+            - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19094
+            - --advertise-kafka-addr internal://kafka-3:9092,external://localhost:19094
+            - --rpc-addr kafka-3:33147
+            - --advertise-rpc-addr kafka-3:33147
+            - --smp 4
+            - --memory 6G
+            - --reserve-memory 1G
+            - --overprovisioned
+            - --set redpanda.empty_seed_starts_cluster=false
+            - --seeds kafka:33145,kafka-2:33146,kafka-3:33147
+            - --set redpanda.auto_create_topics_enabled=true
+        environment:
+            ALLOW_PLAINTEXT_LISTENER: 'true'
+        deploy:
+            resources:
+                limits:
+                    memory: 8G
+        volumes:
+            - kafka-3-data:/var/lib/redpanda/data
+
+    # ================================================================
+    # Kafka Init — all topics with replication-factor=3
+    # ================================================================
+    kafka-init:
+        image: docker.io/redpandadata/redpanda:v25.1.9
+        entrypoint: /bin/sh
+        logging: *default-logging
+        command:
+            - -c
+            - |
+                set -x
+                echo "Waiting for Kafka broker to accept connections..."
+                TIMEOUT=60
+                ELAPSED=0
+                until rpk topic list --brokers kafka:9092 2>/dev/null; do
+                    echo "Kafka broker not ready yet (elapsed: $${ELAPSED}s)..."
+                    sleep 2
+                    ELAPSED=$$((ELAPSED + 2))
+                    if [ $$ELAPSED -ge $$TIMEOUT ]; then
+                        echo "Timeout waiting for Kafka broker after $${TIMEOUT}s"
+                        exit 1
+                    fi
+                done
+                echo "Creating topics with replication-factor=3..."
+                TOPICS="clickhouse_events_json \
+                    clickhouse_ai_events_json \
+                    clickhouse_heatmap_events \
+                    clickhouse_flag_evaluations \
+                    clickhouse_ingestion_warnings \
+                    events_plugin_ingestion_dlq \
+                    events_plugin_ingestion_overflow \
+                    events_plugin_ingestion_async \
+                    ingestion-clientwarnings-main-1 \
+                    heatmaps_ingestion \
+                    clickhouse_groups \
+                    clickhouse_person \
+                    clickhouse_person_distinct_id \
+                    clickhouse_app_metrics2 \
+                    log_entries \
+                    clickhouse_tophog \
+                    ai_events_ingestion \
+                    logs_ingestion \
+                    metrics_ingestion \
+                    session_recording_snapshot_item_events \
+                    events_plugin_ingestion_historical \
+                    ingestion-errortracking-main"
+                for topic in $$TOPICS; do
+                    if rpk topic create "$$topic" --brokers kafka:9092 -p 3 -r 3 2>&1; then
+                        echo "Topic $$topic created"
+                    else
+                        rpk topic list --brokers kafka:9092 | grep -q "$$topic" && echo "Topic $$topic exists" || exit 1
+                    fi
+                done
+                echo "All topics ready"
+        depends_on:
+            kafka:
+                condition: service_healthy
+
+    # ================================================================
+    # ClickHouse — single node or 2x2 cluster
+    # ================================================================
+    # Copy desired cluster config before starting:
+    #   cp docker/clickhouse/config.d/cluster-single.xml docker/clickhouse/config.d/cluster.xml
+    #   OR
+    #   cp docker/clickhouse/config.d/cluster-2x2.xml docker/clickhouse/config.d/cluster.xml
+    clickhouse:
+        image: ${CLICKHOUSE_SERVER_IMAGE:-clickhouse/clickhouse-server:26.6.2.158}
+        restart: always
+        environment:
+            CLICKHOUSE_SKIP_USER_SETUP: 1
+            KAFKA_HOSTS: 'kafka:9092'
+        healthcheck:
+            test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: ${CLICKHOUSE_MEMORY_LIMIT:-32G}
+                reservations:
+                    memory: ${CLICKHOUSE_MEMORY_RESERVATION:-16G}
+        volumes:
+            - ./posthog/posthog/idl:/idl
+            - ./posthog/docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./posthog/docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+            - ./posthog/docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./posthog/docker/clickhouse/config.d/production.xml:/etc/clickhouse-server/config.d/production.xml
+            - ./posthog/docker/clickhouse/config.d/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+            - ./posthog/docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+            - ./posthog/docker/clickhouse/users.d/production.xml:/etc/clickhouse-server/users.d/production.xml
+            - ./posthog/docker/clickhouse/user_defined_function.xml:/etc/clickhouse-server/user_defined_function.xml
+            - ./posthog/posthog/user_scripts:/var/lib/clickhouse/user_scripts
+            - clickhouse-data:/var/lib/clickhouse
+
+    # Additional ClickHouse nodes for 2x2 cluster mode
+    # Only start these when using cluster-2x2.xml
+    clickhouse-2:
+        image: ${CLICKHOUSE_SERVER_IMAGE:-clickhouse/clickhouse-server:26.6.2.158}
+        restart: always
+        environment:
+            CLICKHOUSE_SKIP_USER_SETUP: 1
+            KAFKA_HOSTS: 'kafka:9092'
+        healthcheck:
+            test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: ${CLICKHOUSE_MEMORY_LIMIT:-32G}
+        volumes:
+            - ./posthog/posthog/idl:/idl
+            - ./posthog/docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./posthog/docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+            - ./posthog/docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./posthog/docker/clickhouse/config.d/production.xml:/etc/clickhouse-server/config.d/production.xml
+            - ./posthog/docker/clickhouse/config.d/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+            - ./posthog/docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+            - ./posthog/docker/clickhouse/users.d/production.xml:/etc/clickhouse-server/users.d/production.xml
+            - ./posthog/docker/clickhouse/macros/ch2.xml:/etc/clickhouse-server/config.d/macros.xml
+            - ./posthog/posthog/user_scripts:/var/lib/clickhouse/user_scripts
+            - clickhouse-2-data:/var/lib/clickhouse
+
+    clickhouse-3:
+        image: ${CLICKHOUSE_SERVER_IMAGE:-clickhouse/clickhouse-server:26.6.2.158}
+        restart: always
+        environment:
+            CLICKHOUSE_SKIP_USER_SETUP: 1
+            KAFKA_HOSTS: 'kafka:9092'
+        healthcheck:
+            test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: ${CLICKHOUSE_MEMORY_LIMIT:-32G}
+        volumes:
+            - ./posthog/posthog/idl:/idl
+            - ./posthog/docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./posthog/docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+            - ./posthog/docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./posthog/docker/clickhouse/config.d/production.xml:/etc/clickhouse-server/config.d/production.xml
+            - ./posthog/docker/clickhouse/config.d/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+            - ./posthog/docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+            - ./posthog/docker/clickhouse/users.d/production.xml:/etc/clickhouse-server/users.d/production.xml
+            - ./posthog/docker/clickhouse/macros/ch3.xml:/etc/clickhouse-server/config.d/macros.xml
+            - ./posthog/posthog/user_scripts:/var/lib/clickhouse/user_scripts
+            - clickhouse-3-data:/var/lib/clickhouse
+
+    clickhouse-4:
+        image: ${CLICKHOUSE_SERVER_IMAGE:-clickhouse/clickhouse-server:26.6.2.158}
+        restart: always
+        environment:
+            CLICKHOUSE_SKIP_USER_SETUP: 1
+            KAFKA_HOSTS: 'kafka:9092'
+        healthcheck:
+            test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+            interval: 3s
+            timeout: 10s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: ${CLICKHOUSE_MEMORY_LIMIT:-32G}
+        volumes:
+            - ./posthog/posthog/idl:/idl
+            - ./posthog/docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./posthog/docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+            - ./posthog/docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./posthog/docker/clickhouse/config.d/production.xml:/etc/clickhouse-server/config.d/production.xml
+            - ./posthog/docker/clickhouse/config.d/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+            - ./posthog/docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+            - ./posthog/docker/clickhouse/users.d/production.xml:/etc/clickhouse-server/users.d/production.xml
+            - ./posthog/docker/clickhouse/macros/ch4.xml:/etc/clickhouse-server/config.d/macros.xml
+            - ./posthog/posthog/user_scripts:/var/lib/clickhouse/user_scripts
+            - clickhouse-4-data:/var/lib/clickhouse
+
+    # ================================================================
+    # Elasticsearch (Temporal dependency)
+    # ================================================================
+    elasticsearch:
+        image: elasticsearch:8.11.3
+        restart: always
+        environment:
+            - cluster.routing.allocation.disk.threshold_enabled=true
+            - cluster.routing.allocation.disk.watermark.low=512mb
+            - cluster.routing.allocation.disk.watermark.high=256mb
+            - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+            - xpack.security.enabled=false
+            - discovery.type=single-node
+            - ES_JAVA_OPTS=-Xms1g -Xmx1g
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -f http://localhost:9200/_cluster/health || exit 1']
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+        volumes:
+            - elasticsearch-data:/usr/share/elasticsearch/data
+
+    # ================================================================
+    # Temporal
+    # ================================================================
+    temporal:
+        image: temporalio/auto-setup:1.26.2
+        restart: always
+        environment:
+            - DB=postgres12
+            - DB_PORT=${POSTGRES_PORT:-5432}
+            - POSTGRES_USER=${POSTGRES_USER:-posthog}
+            - POSTGRES_PWD=${POSTGRES_PASSWORD:-posthog}
+            - POSTGRES_SEEDS=${POSTGRES_HOST:-db}
+            - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+            - ENABLE_ES=${ENABLE_ES:-true}
+            - ES_SEEDS=elasticsearch
+            - ES_VERSION=v8
+            - ENABLE_ES_LOCAL_LOG=false
+        healthcheck:
+            test: ['CMD-SHELL', 'nc -z $(hostname) 7233']
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        depends_on:
+            db:
+                condition: service_healthy
+            elasticsearch:
+                condition: service_healthy
+        ports:
+            - '7233:7233'
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
+        volumes:
+            - ./posthog/docker/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+
+    temporal-admin-tools:
+        environment:
+            - TEMPORAL_CLI_ADDRESS=temporal:7233
+        image: temporalio/admin-tools:1.26.2
+        stdin_open: true
+        tty: true
+        depends_on:
+            - temporal
+
+    temporal-ui:
+        image: temporalio/ui:2.47.2
+        depends_on:
+            temporal:
+                condition: service_started
+            db:
+                condition: service_healthy
+        environment:
+            - TEMPORAL_ADDRESS=temporal:7233
+            - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+            - TEMPORAL_CSRF_COOKIE_INSECURE=true
+            - TEMPORAL_CODEC_ENDPOINT=http://localhost:8000
+        ports:
+            - '127.0.0.1:8081:8080'
+
+volumes:
+    postgres-data:
+    redis7-data:
+    zookeeper-data:
+    zookeeper-datalog:
+    zookeeper-logs:
+    zookeeper-2-data:
+    zookeeper-2-datalog:
+    zookeeper-3-data:
+    zookeeper-3-datalog:
+    kafka-data:
+    kafka-2-data:
+    kafka-3-data:
+    clickhouse-data:
+    clickhouse-2-data:
+    clickhouse-3-data:
+    clickhouse-4-data:
+    elasticsearch-data:

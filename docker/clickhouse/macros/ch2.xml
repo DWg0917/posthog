@@ -1,0 +1,8 @@
+<clickhouse>
+    <macros>
+        <shard>01</shard>
+        <replica>ch2</replica>
+        <hostClusterType>online</hostClusterType>
+        <hostClusterRole>data</hostClusterRole>
+    </macros>
+</clickhouse>

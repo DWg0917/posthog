@@ -1,0 +1,39 @@
+<clickhouse>
+    <!-- Production tuning: memory, threads, Kafka consumers, caches -->
+
+    <!-- Use 80% of RAM, leave room for OS -->
+    <max_server_memory_usage_to_ram_ratio>0.8</max_server_memory_usage_to_ram_ratio>
+
+    <!-- Merge workers: increased from default 4 -->
+    <background_pool_size>16</background_pool_size>
+    <background_merges_mutations_concurrency_ratio>4</background_merges_mutations_concurrency_ratio>
+
+    <!-- Kafka consumer threads: must exceed kafka engine table count -->
+    <background_message_broker_schedule_pool_size>128</background_message_broker_schedule_pool_size>
+
+    <!-- Thread pool -->
+    <max_thread_pool_size>10000</max_thread_pool_size>
+
+    <!-- Mark cache: 10GB (used by MergeTree for index lookups) -->
+    <mark_cache_size>10737418240</mark_cache_size>
+
+    <!-- Uncompressed block cache: 8GB -->
+    <uncompressed_cache_size>8589934592</uncompressed_cache_size>
+
+    <!-- Compiled expression cache -->
+    <compiled_expression_cache_size>134217728</compiled_expression_cache_size>
+    <compiled_expression_cache_elements_size>10000</compiled_expression_cache_elements_size>
+
+    <!-- Merge tree optimization -->
+    <merge_tree>
+        <max_bytes_to_merge_at_max_space_in_pool>16106127360</max_bytes_to_merge_at_max_space_in_pool>
+        <number_of_free_entries_in_pool_to_execute_mutation>8</number_of_free_entries_in_pool_to_execute_mutation>
+        <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>8</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+    </merge_tree>
+
+    <!-- Kafka engine: concurrent consumers per table -->
+    <kafka>
+        <max_consumers>4</max_consumers>
+        <consumer_timeout_ms>5000</consumer_timeout_ms>
+    </kafka>
+</clickhouse>
