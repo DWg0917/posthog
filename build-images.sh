@@ -39,7 +39,6 @@ echo "[3/3] Building Rust services..."
 RUST_SERVICES=(
     "capture"
     "capture-logs"
-    "replay-capture"
     "property-defs-rs"
     "personhog-replica"
     "personhog-router"
