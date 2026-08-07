@@ -273,3 +273,7 @@ services:
             service: kafka_ui
         ports:
             - '127.0.0.1:8080:8080'
+
+networks:
+    otel_network:
+        driver: bridge
