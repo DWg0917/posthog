@@ -306,6 +306,7 @@ services:
             RUST_LOG: 'info'
             CYMBAL_REMOTE_RESOLUTION_HOST: 'web'
             INTERNAL_API_SECRET: ${POSTHOG_SECRET}
+            CYMBAL_MODE: 'notifications'
         depends_on:
             - kafka
             - db
