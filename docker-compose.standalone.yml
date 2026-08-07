@@ -278,6 +278,9 @@ services:
     plugins:
         image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
         restart: always
+        environment:
+            PERSONHOG_ENABLED: 'true'
+            PERSONHOG_ADDR: 'personhog-router:50052'
         deploy:
             resources:
                 limits:
