@@ -271,7 +271,6 @@ services:
     feature-flags:
         image: ${REGISTRY_URL}/feature-flags:${POSTHOG_APP_TAG:-latest}
         restart: always
-        volumes: []
         depends_on:
             - db
             - redis7
@@ -283,12 +282,10 @@ services:
             resources:
                 limits:
                     memory: 4G
-        volumes: []
 
     cymbal:
         image: ${REGISTRY_URL}/cymbal:${POSTHOG_APP_TAG:-latest}
         restart: always
-        volumes: []
         environment:
             KAFKA_HOSTS: 'kafka:9092'
             OBJECT_STORAGE_BUCKET: posthog
