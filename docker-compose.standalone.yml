@@ -296,10 +296,6 @@ services:
         image: ${REGISTRY_URL}/cyclotron-janitor:${POSTHOG_APP_TAG:-latest}
         restart: always
 
-    cymbal:
-        image: ${REGISTRY_URL}/cymbal:${POSTHOG_APP_TAG:-latest}
-        restart: always
-
     # ================================================================
     # Object Storage
     # ================================================================
