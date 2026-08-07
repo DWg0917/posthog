@@ -196,6 +196,7 @@ services:
     # ================================================================
     web:
         image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+        command: ./bin/start-backend & ./bin/start-frontend
         restart: always
         deploy:
             resources:
@@ -204,11 +205,25 @@ services:
 
     worker:
         image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+        command: ./bin/docker-worker-celery --with-scheduler
         restart: always
         deploy:
             resources:
                 limits:
                     memory: 4G
+
+    temporal-django-worker:
+        image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+        command: ./bin/temporal-django-worker
+        restart: always
+
+    temporal:
+        image: temporalio/auto-setup:1.26.2
+        restart: always
+        environment:
+            - ENABLE_ES=false
+        volumes:
+            - ./docker/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
 
     plugins:
         image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
@@ -262,6 +277,24 @@ services:
     feature-flags:
         image: ${REGISTRY_URL}/feature-flags:${POSTHOG_APP_TAG:-latest}
         restart: always
+        volumes: []
+        depends_on:
+            - db
+            - redis7
+
+    plugins:
+        image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        restart: always
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+        volumes: []
+
+    cymbal:
+        image: ${REGISTRY_URL}/cymbal:${POSTHOG_APP_TAG:-latest}
+        restart: always
+        volumes: []
 
     hypercache-server:
         image: ${REGISTRY_URL}/hypercache-server:${POSTHOG_APP_TAG:-latest}
