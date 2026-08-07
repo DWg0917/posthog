@@ -305,6 +305,7 @@ services:
             ISSUE_BUCKETS_REDIS_URL: 'redis://redis7:6379/'
             RUST_LOG: 'info'
             CYMBAL_REMOTE_RESOLUTION_HOST: 'web'
+            INTERNAL_API_SECRET: ${POSTHOG_SECRET}
         depends_on:
             - kafka
             - db
