@@ -309,6 +309,8 @@ services:
             CYMBAL_MODE: 'notifications'
             TEMPORAL_HOST: 'temporal'
             TEMPORAL_NAMESPACE: 'default'
+            TEMPORAL_CLIENT_CERT: ''
+            TEMPORAL_CLIENT_KEY: ''
         depends_on:
             - kafka
             - db
