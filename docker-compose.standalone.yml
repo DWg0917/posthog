@@ -308,6 +308,7 @@ services:
             INTERNAL_API_SECRET: ${POSTHOG_SECRET}
             CYMBAL_MODE: 'notifications'
             TEMPORAL_HOST: 'temporal'
+            TEMPORAL_NAMESPACE: 'default'
         depends_on:
             - kafka
             - db
