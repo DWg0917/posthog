@@ -219,9 +219,15 @@ services:
                     memory: 4G
 
     capture:
+        image: ${REGISTRY_URL}/capture:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    replay-capture:
+        image: ${REGISTRY_URL}/capture:${POSTHOG_APP_TAG:-latest}
         restart: always
 
     capture-ai:
+        image: ${REGISTRY_URL}/capture:${POSTHOG_APP_TAG:-latest}
         extends:
             file: docker-compose.base.yml
             service: capture-ai
@@ -233,12 +239,41 @@ services:
             - seaweedfs
 
     capture-logs:
+        image: ${REGISTRY_URL}/capture-logs:${POSTHOG_APP_TAG:-latest}
         extends:
             file: docker-compose.base.yml
             service: capture-logs
         restart: always
         depends_on:
             - kafka
+
+    property-defs-rs:
+        image: ${REGISTRY_URL}/property-defs-rs:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    personhog-replica:
+        image: ${REGISTRY_URL}/personhog-replica:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    personhog-router:
+        image: ${REGISTRY_URL}/personhog-router:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    feature-flags:
+        image: ${REGISTRY_URL}/feature-flags:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    hypercache-server:
+        image: ${REGISTRY_URL}/hypercache-server:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    cyclotron-janitor:
+        image: ${REGISTRY_URL}/cyclotron-janitor:${POSTHOG_APP_TAG:-latest}
+        restart: always
+
+    cymbal:
+        image: ${REGISTRY_URL}/cymbal:${POSTHOG_APP_TAG:-latest}
+        restart: always
 
     # ================================================================
     # Object Storage
