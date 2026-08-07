@@ -198,6 +198,8 @@ services:
         image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
         command: ./bin/start-backend & ./bin/start-frontend
         restart: always
+        environment:
+            HOST_BIND: '0.0.0.0'
         deploy:
             resources:
                 limits:
