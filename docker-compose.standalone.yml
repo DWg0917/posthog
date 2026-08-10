@@ -288,6 +288,7 @@ services:
         environment:
             PERSONHOG_ENABLED: 'true'
             PERSONHOG_ADDR: 'personhog-router:50052'
+            CYCLOTRON_NODE_DATABASE_URL: 'postgres://posthog:posthog@db:5432/posthog'
         deploy:
             resources:
                 limits:
