@@ -13,9 +13,60 @@ services:
     # Proxy (Caddy)
     # ================================================================
     proxy:
+        image: caddy
+        entrypoint: sh
+        command: -c 'set -x && echo "$$CADDYFILE" > /etc/caddy/Caddyfile && echo "$$CADDY_EXTRA_CONFIG" >> /etc/caddy/Caddyfile && exec caddy run -c /etc/caddy/Caddyfile'
+        restart: always
+        ports:
+            - '80:80'
+            - '443:443'
+        volumes:
+            - caddy-data:/data
+            - caddy-config:/config
         environment:
             CADDY_TLS_BLOCK: ${TLS_BLOCK:-}
             CADDY_HOST: '${DOMAIN}, http://, https://'
+            CADDY_EXTRA_CONFIG: ''
+            CADDYFILE: |
+                {
+                ${CADDY_TLS_BLOCK:-}
+                }
+                ${DOMAIN}, http://, https:// {
+                    handle @replay-capture {
+                        reverse_proxy replay-capture:3000
+                    }
+                    handle @capture-ai {
+                        reverse_proxy capture-ai:3000
+                    }
+                    handle @capture {
+                        reverse_proxy capture:3000
+                    }
+                    handle @capture-logs {
+                        reverse_proxy capture-logs:4318
+                    }
+                    handle @flags {
+                        reverse_proxy feature-flags:3001
+                    }
+                    handle @surveys {
+                        reverse_proxy hypercache-server:3002
+                    }
+                    handle @remote-config {
+                        reverse_proxy hypercache-server:3002
+                    }
+                    handle @webhooks {
+                        reverse_proxy plugins:6738
+                    }
+                    handle @livestream {
+                        uri strip_prefix /livestream
+                        reverse_proxy livestream:8080
+                    }
+                    handle {
+                        reverse_proxy web:8000
+                    }
+                }
+        depends_on:
+            - web
+            - livestream
 
     # ================================================================
     # PostgreSQL — production tuning
@@ -208,10 +259,14 @@ services:
         restart: always
         environment:
             HOST_BIND: '0.0.0.0'
+            SECURE_COOKIES: 'false'
+            DISABLE_SECURE_SSL_REDIRECT: 'true'
+            IS_BEHIND_PROXY: 'true'
+            TRUST_ALL_PROXIES: 'true'
         deploy:
             resources:
                 limits:
-                    memory: 4G
+                    memory: 8G
 
     worker:
         image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
