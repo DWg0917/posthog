@@ -372,6 +372,30 @@ class Organization(ModelActivityMixin, UUIDTModel):
         # Cloud deployments are handled above via billing service, so this only
         # affects self-hosted instances where there is no license server.
         features = License.PLANS.get(License.ENTERPRISE_PLAN, [])
+        # Add features not covered by the legacy license plan but required for
+        # full self-hosted functionality (e.g. project creation by members).
+        features = list(features) + [
+            AvailableFeature.ORGANIZATION_INVITE_SETTINGS,
+            AvailableFeature.ORGANIZATION_SECURITY_SETTINGS,
+            AvailableFeature.TWO_FACTOR_ENFORCEMENT,
+            AvailableFeature.ORGANIZATION_APP_QUERY_CONCURRENCY_LIMIT,
+            AvailableFeature.APPROVALS,
+            AvailableFeature.AUDIT_LOGS,
+            AvailableFeature.API_QUERIES_CONCURRENCY,
+            AvailableFeature.DATA_PIPELINES,
+            AvailableFeature.ALERTS,
+            AvailableFeature.DATA_COLOR_THEMES,
+            AvailableFeature.SURVEYS_STYLING,
+            AvailableFeature.SURVEYS_TEXT_HTML,
+            AvailableFeature.SURVEYS_RECURRING,
+            AvailableFeature.SURVEYS_MULTIPLE_QUESTIONS,
+            AvailableFeature.SESSION_REPLAY_DATA_RETENTION,
+            AvailableFeature.PRODUCT_ANALYTICS_DATA_RETENTION,
+            AvailableFeature.POSTHOG_CODE_USAGE,
+        ]
+        # Deduplicate while preserving order.
+        seen = set()
+        features = [f for f in features if not (str(f) in seen or seen.add(str(f)))]
         self.available_product_features = [
             {"key": feature, "name": " ".join(feature.split(" ")).capitalize()} for feature in features
         ]
