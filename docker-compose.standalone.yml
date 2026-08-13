@@ -344,6 +344,10 @@ services:
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
             ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
             OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+            # Custom model names for proxy APIs (e.g., GLM, Xiaomi MiMo)
+            AI_ASSISTANT_MODEL: ${AI_ASSISTANT_MODEL:-claude-sonnet-4-6}
+            AI_TICKET_SUMMARY_MODEL: ${AI_TICKET_SUMMARY_MODEL:-claude-sonnet-5}
+            AI_EVALUATION_MODEL: ${AI_EVALUATION_MODEL:-claude-haiku-4-5}
         deploy:
             resources:
                 limits:
@@ -359,6 +363,10 @@ services:
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
             ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
             OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+            # Custom model names for proxy APIs (e.g., GLM, Xiaomi MiMo)
+            AI_ASSISTANT_MODEL: ${AI_ASSISTANT_MODEL:-claude-sonnet-4-6}
+            AI_TICKET_SUMMARY_MODEL: ${AI_TICKET_SUMMARY_MODEL:-claude-sonnet-5}
+            AI_EVALUATION_MODEL: ${AI_EVALUATION_MODEL:-claude-haiku-4-5}
         deploy:
             resources:
                 limits:

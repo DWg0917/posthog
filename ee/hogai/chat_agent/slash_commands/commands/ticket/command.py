@@ -110,7 +110,7 @@ class TicketCommand(SlashCommand):
         # Needs a 1M-context model because this summarizes the whole conversation window, which can
         # hold up to CONVERSATION_WINDOW_SIZE tokens.
         return MaxChatAnthropic(
-            model="claude-sonnet-5",
+            model=settings.AI_TICKET_SUMMARY_MODEL,
             streaming=True,
             stream_usage=True,
             user=self._user,

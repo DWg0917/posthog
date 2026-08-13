@@ -275,7 +275,7 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         is_routing_through_llm_gateway = bool(gateway_kwargs)
 
         base_model = MaxChatAnthropic(
-            model="claude-sonnet-4-6",
+            model=settings.AI_ASSISTANT_MODEL,
             streaming=True,
             stream_usage=True,
             user=self._user,

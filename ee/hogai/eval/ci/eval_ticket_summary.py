@@ -1,5 +1,7 @@
 import pytest
 
+from django.conf import settings
+
 from autoevals.llm import LLMClassifier
 from braintrust import EvalCase
 from langchain_core.messages import (
@@ -77,7 +79,7 @@ def call_summarizer(demo_org_team_user):
         messages_list.append(LangchainHumanMessage(content=SUPPORT_SUMMARIZER_USER_PROMPT))
 
         model = MaxChatAnthropic(
-            model="claude-haiku-4-5",
+            model=settings.AI_EVALUATION_MODEL,
             streaming=False,
             user=demo_org_team_user[2],
             team=demo_org_team_user[1],

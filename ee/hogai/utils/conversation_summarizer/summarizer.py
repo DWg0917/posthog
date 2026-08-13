@@ -3,6 +3,8 @@ import datetime
 from abc import abstractmethod
 from collections.abc import Sequence
 
+from django.conf import settings
+
 from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -62,7 +64,7 @@ class AnthropicConversationSummarizer(ConversationSummarizer):
         return MaxChatAnthropic(
             # Sonnet 5 has a 1M token limit, so it can compact a conversation of any size we let
             # grow. Haiku's 200k limit no longer covers CONVERSATION_WINDOW_SIZE.
-            model="claude-sonnet-5",
+            model=settings.AI_TICKET_SUMMARY_MODEL,
             streaming=False,
             stream_usage=False,
             max_tokens=16384,
