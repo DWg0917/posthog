@@ -32,14 +32,91 @@ services:
                 ${CADDY_TLS_BLOCK:-}
                 }
                 ${DOMAIN}, http://, https:// {
-                    handle @replay-capture {
-                        reverse_proxy replay-capture:3000
+                    @replay-capture {
+                        path /s
+                        path /s/
+                        path /s/*
+                    }
+                    @capture-ai {
+                        path /i/v0/ai
+                        path /i/v0/ai/
+                        path /i/v0/ai/*
+                    }
+                    @capture {
+                        path /e
+                        path /e/
+                        path /e/*
+                        path /i/v0
+                        path /i/v0/
+                        path /i/v0/*
+                        path /i/v1/analytics/events
+                        path /i/v1/analytics/events/
+                        path /batch
+                        path /batch/
+                        path /batch/*
+                        path /capture
+                        path /capture/
+                        path /capture/*
+                    }
+                    @capture-logs {
+                        path /i/v1/logs
+                        path /i/v1/logs/
+                        path /i/v1/logs/*
+                        path /i/v1/traces
+                        path /i/v1/traces/
+                        path /i/v1/traces/*
+                        path /i/v1/metrics
+                        path /i/v1/metrics/
+                        path /i/v1/metrics/*
+                    }
+                    @flags {
+                        path /flags
+                        path /flags/
+                        path /flags/*
+                        path /api/feature_flag/local_evaluation
+                        path /api/feature_flag/local_evaluation/
+                        path /api/feature_flag/local_evaluation/*
+                    }
+                    @surveys {
+                        path /surveys
+                        path /surveys/
+                        path /api/surveys
+                        path /api/surveys/
+                    }
+                    @remote-config {
+                        path /array/*
+                    }
+                    @webhooks {
+                        path /public/webhooks
+                        path /public/webhooks/
+                        path /public/webhooks/*
+                        path /public/m
+                        path /public/m/*
+                    }
+                    @livestream {
+                        path /livestream
+                        path /livestream/
+                        path /livestream/*
+                    }
+                    @objectstorage {
+                        path /posthog
+                        path /posthog/
+                        path /posthog/*
+                    }
+                    handle @livestream {
+                        uri strip_prefix /livestream
+                        reverse_proxy livestream:8080 {
+                            flush_interval -1
+                        }
                     }
                     handle @capture-ai {
                         reverse_proxy capture-ai:3000
                     }
                     handle @capture {
                         reverse_proxy capture:3000
+                    }
+                    handle @replay-capture {
+                        reverse_proxy replay-capture:3000
                     }
                     handle @capture-logs {
                         reverse_proxy capture-logs:4318
@@ -56,9 +133,8 @@ services:
                     handle @webhooks {
                         reverse_proxy plugins:6738
                     }
-                    handle @livestream {
-                        uri strip_prefix /livestream
-                        reverse_proxy livestream:8080
+                    handle @objectstorage {
+                        reverse_proxy objectstorage:19000
                     }
                     handle {
                         reverse_proxy web:8000
