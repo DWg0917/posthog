@@ -339,6 +339,11 @@ services:
             DISABLE_SECURE_SSL_REDIRECT: 'true'
             IS_BEHIND_PROXY: 'true'
             TRUST_ALL_PROXIES: 'true'
+            # AI provider keys for PostHog's AI features. Blank unless set in .env.
+            ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+            OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+            OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
         deploy:
             resources:
                 limits:
@@ -348,6 +353,12 @@ services:
         image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
         command: ./bin/docker-worker-celery --with-scheduler
         restart: always
+        environment:
+            # AI provider keys for PostHog's AI features. Blank unless set in .env.
+            ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+            OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+            OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
         deploy:
             resources:
                 limits:
