@@ -48,11 +48,10 @@ echo "📦 开始构建镜像..."
 echo "这可能需要 10-30 分钟,取决于网络和机器性能..."
 echo ""
 
-# 构建镜像
+# 构建镜像 (不指定 target,构建完整的最终镜像)
 docker build \
     -t ${IMAGE_NAME}:${TAG} \
     -f Dockerfile \
-    --target posthog \
     --build-arg COMMIT_HASH=$(git rev-parse HEAD) \
     --progress=plain \
     .
