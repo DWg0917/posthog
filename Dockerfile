@@ -206,8 +206,8 @@ RUN --mount=type=cache,id=uv-libxmlsec1.2.37-2,target=/root/.cache/uv \
     --mount=type=bind,source=tools/owners,target=tools/owners \
     uv sync --locked --no-dev --no-editable --no-install-project --no-binary-package lxml --no-binary-package xmlsec && \
     # Python 3.12+ no longer includes setuptools/pkg_resources by default, but some dependencies
-    # (like infi.clickhouse_orm) still require it. Install it explicitly.
-    uv pip install --system --no-cache-dir setuptools
+    # (like infi.clickhouse_orm) still require it. Install into the same virtual environment.
+    VIRTUAL_ENV=/python-runtime uv pip install --no-cache-dir setuptools
 
 ENV PATH=/python-runtime/bin:$PATH \
     PYTHONPATH=/python-runtime
