@@ -62,7 +62,7 @@ fi
 
 echo ""
 echo "📊 当前配置:"
-echo "  镜像: ${IMAGE_NAME:-posthog/posthog:latest}"
+echo "  镜像: ${IMAGE_NAME:-posthog-custom:latest (本地)}"
 echo "  环境: .env"
 echo "  编排: docker-compose.custom.yml"
 echo ""
@@ -78,10 +78,15 @@ if docker-compose -f docker-compose.custom.yml ps 2>/dev/null | grep -q "Up"; th
     fi
 fi
 
-# 拉取镜像 (如果使用远程镜像)
+# 拉取镜像 (如果指定了完整镜像名)
 if [ -n "$IMAGE_NAME" ]; then
-    echo "📥 拉取镜像..."
-    docker pull ${IMAGE_NAME} || echo "⚠️  拉取失败,尝试使用本地镜像"
+    # 检查本地是否已有该镜像
+    if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
+        echo "✅ 使用本地已存在的镜像: ${IMAGE_NAME}"
+    else
+        echo "📥 拉取镜像..."
+        docker pull ${IMAGE_NAME} || echo "⚠️  拉取失败,请确认镜像已构建"
+    fi
 fi
 
 echo ""
