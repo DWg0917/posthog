@@ -122,6 +122,18 @@ services:
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            # Chinese LLM Providers (for Hobby/Custom deployments)
+            GLM_API_KEY: ${GLM_API_KEY:-}
+            GLM_BASE_URL: ${GLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+            QWEN_API_KEY: ${QWEN_API_KEY:-}
+            QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+            MIMO_API_KEY: ${MIMO_API_KEY:-}
+            MIMO_BASE_URL: ${MIMO_BASE_URL:-https://api.mimo.chat/v1}
+            CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
+            CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
+            # LLM Gateway (optional, for rate limiting and attribution)
+            LLM_GATEWAY_URL: ${LLM_GATEWAY_URL:-}
+            LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY:-}
         image: $REGISTRY_URL:$POSTHOG_APP_TAG
         depends_on:
             db:
@@ -185,6 +197,18 @@ services:
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            # Chinese LLM Providers (for Hobby/Custom deployments)
+            GLM_API_KEY: ${GLM_API_KEY:-}
+            GLM_BASE_URL: ${GLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+            QWEN_API_KEY: ${QWEN_API_KEY:-}
+            QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+            MIMO_API_KEY: ${MIMO_API_KEY:-}
+            MIMO_BASE_URL: ${MIMO_BASE_URL:-https://api.mimo.chat/v1}
+            CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
+            CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
+            # LLM Gateway (optional, for rate limiting and attribution)
+            LLM_GATEWAY_URL: ${LLM_GATEWAY_URL:-}
+            LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY:-}
         depends_on:
             - db
             - redis7
@@ -485,6 +509,18 @@ services:
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            # Chinese LLM Providers
+            GLM_API_KEY: ${GLM_API_KEY:-}
+            GLM_BASE_URL: ${GLM_BASE_URL:-}
+            QWEN_API_KEY: ${QWEN_API_KEY:-}
+            QWEN_BASE_URL: ${QWEN_BASE_URL:-}
+            MIMO_API_KEY: ${MIMO_API_KEY:-}
+            MIMO_BASE_URL: ${MIMO_BASE_URL:-}
+            CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
+            CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
+            # LLM Gateway (optional)
+            LLM_GATEWAY_URL: ${LLM_GATEWAY_URL:-}
+            LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY:-}
         depends_on:
             - db
             - redis7
@@ -494,6 +530,18 @@ services:
             - seaweedfs
             - temporal
             - browserless
+
+    # AI Event Capture (for $ai_* events)
+    capture-ai:
+        build:
+            context: ./posthog/rust
+        extends:
+            file: docker-compose.base.yml
+            service: capture-ai
+        logging: *default-logging
+        depends_on:
+            kafka:
+                condition: service_healthy
 
     capture:
         build:

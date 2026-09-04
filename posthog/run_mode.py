@@ -29,8 +29,12 @@ class RunMode(StrEnum):
 
     @property
     def is_cloud(self) -> bool:
-        """Any cloud mode, E2E included. Matches `posthog.cloud_utils.is_cloud`."""
-        return self.is_deployed_cloud or self is RunMode.E2E
+        """Any cloud mode, E2E included, HOBBY treated as cloud for feature access.
+        
+        For custom self-hosted deployments, hobby mode now has cloud-like permissions
+        to unlock all enterprise features.
+        """
+        return self.is_deployed_cloud or self is RunMode.E2E or self is RunMode.HOBBY
 
     @property
     def is_hobby(self) -> bool:

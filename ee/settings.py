@@ -94,6 +94,30 @@ ANTHROPIC_API_KEY = get_from_env("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = get_from_env("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = get_from_env("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
+# Chinese LLM Providers (for Hobby/Custom deployments)
+# GLM (智谱 AI) - https://open.bigmodel.cn/
+GLM_API_KEY = get_from_env("GLM_API_KEY", "")
+GLM_BASE_URL = get_from_env("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+# GLM supported models list
+GLM_SUPPORTED_MODELS = ["glm-4", "glm-4-plus", "glm-4-flash", "glm-4v", "codegeex-4"]
+
+# 通义千问 (Alibaba Qwen) - https://help.aliyun.com/zh/model-studio/
+QWEN_API_KEY = get_from_env("QWEN_API_KEY", "")
+QWEN_BASE_URL = get_from_env("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+# Qwen supported models list
+QWEN_SUPPORTED_MODELS = ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-long", "qwen-vl-max", "qwen-coder"]
+
+# 小米 MiMo (Xiaomi) - custom endpoint
+MIMO_API_KEY = get_from_env("MIMO_API_KEY", "")
+MIMO_BASE_URL = get_from_env("MIMO_BASE_URL", "https://api.mimo.chat/v1")
+# MiMo supported models list
+MIMO_SUPPORTED_MODELS = ["mimo-v1", "mimo-v2"]
+
+# Custom LLM Provider (OpenAI-compatible API)
+CUSTOM_LLM_API_KEY = get_from_env("CUSTOM_LLM_API_KEY", "")
+CUSTOM_LLM_BASE_URL = get_from_env("CUSTOM_LLM_BASE_URL", "")
+CUSTOM_LLM_MODELS = get_from_env("CUSTOM_LLM_MODELS", "")  # Comma-separated list
+
 # LLM Gateway (internal service for proxying LLM requests with rate limiting and attribution)
 LLM_GATEWAY_URL = get_from_env("LLM_GATEWAY_URL", "http://localhost:3308" if DEBUG else "")
 LLM_GATEWAY_API_KEY = get_from_env("LLM_GATEWAY_PERSONAL_API_KEY", DEV_API_KEY if DEBUG else "")

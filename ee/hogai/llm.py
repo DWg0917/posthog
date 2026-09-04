@@ -330,3 +330,70 @@ class MaxChatAnthropic(MaxChatMixin, ChatAnthropic):
         kwargs = self._with_posthog_properties(kwargs)
 
         return await super().agenerate(messages, *args, **kwargs)
+
+
+# Chinese LLM Providers Support
+class MaxChatGLM(MaxChatMixin, ChatOpenAI):
+    """ChatGLM (智谱AI) support via OpenAI-compatible API.
+    
+    GLM models are accessible through an OpenAI-compatible endpoint at https://open.bigmodel.cn/api/paas/v4
+    """
+    
+    posthog_provider: ClassVar[str] = "glm"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the GLM endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.GLM_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = settings.GLM_API_KEY
+
+
+class MaxChatQwen(MaxChatMixin, ChatOpenAI):
+    """通义千问 (Alibaba Qwen) support via OpenAI-compatible API.
+    
+    Qwen models are accessible through DashScope's OpenAI-compatible endpoint.
+    """
+    
+    posthog_provider: ClassVar[str] = "qwen"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the Qwen endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.QWEN_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = settings.QWEN_API_KEY
+
+
+class MaxChatMiMo(MaxChatMixin, ChatOpenAI):
+    """小米 MiMo (Xiaomi) support via OpenAI-compatible API.
+    """
+    
+    posthog_provider: ClassVar[str] = "mimo"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the MiMo endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.MIMO_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = settings.MIMO_API_KEY
+
+
+class MaxChatCustomLLM(MaxChatMixin, ChatOpenAI):
+    """Custom LLM provider support via OpenAI-compatible API.
+    
+    This allows any OpenAI-compatible LLM to be used with PostHog AI.
+    """
+    
+    posthog_provider: ClassVar[str] = "custom"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Use custom endpoint if configured
+        if settings.CUSTOM_LLM_BASE_URL:
+            self.openai_api_base = settings.CUSTOM_LLM_BASE_URL
+        if settings.CUSTOM_LLM_API_KEY:
+            self.openai_api_key = settings.CUSTOM_LLM_API_KEY
