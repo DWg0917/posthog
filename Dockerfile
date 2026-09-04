@@ -204,7 +204,10 @@ RUN --mount=type=cache,id=uv-libxmlsec1.2.37-2,target=/root/.cache/uv \
     # is a runtime dependency (stamphog's digest reads owners.yaml through it), and --no-editable
     # copies it into the venv so the image never depends on this bind mount's path surviving.
     --mount=type=bind,source=tools/owners,target=tools/owners \
-    uv sync --locked --no-dev --no-editable --no-install-project --no-binary-package lxml --no-binary-package xmlsec
+    uv sync --locked --no-dev --no-editable --no-install-project --no-binary-package lxml --no-binary-package xmlsec && \
+    # Python 3.12+ no longer includes setuptools/pkg_resources by default, but some dependencies
+    # (like infi.clickhouse_orm) still require it. Install it explicitly.
+    /python-runtime/bin/pip install --no-cache-dir setuptools
 
 ENV PATH=/python-runtime/bin:$PATH \
     PYTHONPATH=/python-runtime
