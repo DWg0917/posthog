@@ -32,16 +32,15 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# 检查 Docker 登录
-if ! docker info 2>/dev/null | grep -q "Username"; then
-    echo "⚠️  未登录 Docker Hub"
-    echo ""
-    echo "请先登录:"
-    echo "  docker login"
-    echo ""
-    read -p "是否继续? (y/N): " confirm
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        exit 0
+# 检查 Docker 登录 (只在 --push 时需要)
+if [ "$PUSH" = "--push" ]; then
+    if ! docker info 2>/dev/null | grep -q "Username"; then
+        echo "❌ 错误: 未登录 Docker Hub"
+        echo ""
+        echo "请先登录:"
+        echo "  docker login"
+        echo ""
+        exit 1
     fi
 fi
 
