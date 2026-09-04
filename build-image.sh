@@ -50,6 +50,7 @@ echo ""
 
 # 构建镜像 (不指定 target,构建完整的最终镜像)
 docker build \
+    --no-cache \
     -t ${IMAGE_NAME}:${TAG} \
     -f Dockerfile \
     --build-arg COMMIT_HASH=$(git rev-parse HEAD) \
