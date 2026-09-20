@@ -28,7 +28,7 @@
 |--------|---------|---------|------|
 | 智谱 GLM | `GLM_API_KEY`, `GLM_BASE_URL` | `https://open.bigmodel.cn/api/paas/v4` | ✅ 已实现 |
 | 通义千问 | `QWEN_API_KEY`, `QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | ✅ 已实现 |
-| 小米 MiMo | `MIMO_API_KEY`, `MIMO_BASE_URL` | `https://api.mimo.chat/v1` | ✅ 已实现 |
+| 小米 MiMo | `MIMO_API_KEY`, `MIMO_BASE_URL` | `https://token-plan-cn.xiaomimimo.com/v1` | ✅ 已实现 |
 | 自定义 LLM | `CUSTOM_LLM_API_KEY`, `CUSTOM_LLM_BASE_URL` | 自定义 | ✅ 已实现 |
 | OpenAI | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | `https://api.openai.com/v1` | ✅ 已有 |
 | Anthropic | `ANTHROPIC_API_KEY` | 自动 | ✅ 已有 |

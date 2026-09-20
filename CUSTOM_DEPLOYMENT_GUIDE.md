@@ -45,7 +45,7 @@ Hobby 部署现在拥有与 PostHog Cloud 相同的权限级别:
 | **Anthropic** | `ANTHROPIC_API_KEY` | 自动 | claude-3-opus, claude-3-sonnet |
 | **智谱 GLM** | `GLM_API_KEY` | `https://open.bigmodel.cn/api/paas/v4` | glm-4, glm-4-plus, glm-4-flash |
 | **通义千问** | `QWEN_API_KEY` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | qwen-max, qwen-plus, qwen-turbo |
-| **小米 MiMo** | `MIMO_API_KEY` | `https://api.mimo.chat/v1` | mimo-v1, mimo-v2 |
+| **小米 MiMo** | `MIMO_API_KEY` | `https://token-plan-cn.xiaomimimo.com/v1` | mimo-v1, mimo-v2 |
 | **自定义** | `CUSTOM_LLM_API_KEY` | 自定义 | 任意 OpenAI 兼容模型 |
 
 ---
@@ -74,7 +74,7 @@ QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 # 选项 3: 使用小米 MiMo
 MIMO_API_KEY=your-mimo-api-key-here
-MIMO_BASE_URL=https://api.mimo.chat/v1
+MIMO_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
 
 # 选项 4: 使用自定义 OpenAI 兼容端点
 CUSTOM_LLM_API_KEY=your-custom-api-key

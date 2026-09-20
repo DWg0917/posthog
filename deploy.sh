@@ -28,6 +28,7 @@ sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d db
 sleep 10
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate --noinput
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate_clickhouse
+if ! sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U posthog -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = cyclotron_jobs)" | grep -q t; then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U posthog -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking
 for _ in $(seq 1 90); do

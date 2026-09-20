@@ -111,7 +111,7 @@ QWEN_SUPPORTED_MODELS = ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-long", "qw
 MIMO_API_KEY = get_from_env("MIMO_API_KEY", "")
 MIMO_BASE_URL = get_from_env("MIMO_BASE_URL", "https://api.mimo.chat/v1")
 # MiMo supported models list
-MIMO_SUPPORTED_MODELS = ["mimo-v1", "mimo-v2"]
+MIMO_SUPPORTED_MODELS = ["mimo-v2.5", "mimo-v2.5-pro"]
 
 # Custom LLM Provider (OpenAI-compatible API)
 CUSTOM_LLM_API_KEY = get_from_env("CUSTOM_LLM_API_KEY", "")
