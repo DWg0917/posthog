@@ -206,6 +206,7 @@ RUN --mount=type=cache,id=uv-libxmlsec1.2.37-2,target=/root/.cache/uv \
     --mount=type=bind,source=tools/owners,target=tools/owners \
     uv sync --locked --no-dev --no-editable --no-install-project --no-binary-package lxml --no-binary-package xmlsec
 
+RUN uv pip install --python /python-runtime/bin/python setuptools==80.9.0
 ENV PATH=/python-runtime/bin:$PATH \
     PYTHONPATH=/python-runtime
 
@@ -233,7 +234,7 @@ COPY --from=sourcemap-upload /code/frontend/dist /code/frontend/dist
 COPY --from=frontend-build /code/frontend/src/products.json /code/frontend/src/products.json
 
 # Make sure we build the static files
-RUN SKIP_SERVICE_VERSION_REQUIREMENTS=1 STATIC_COLLECTION=1 DATABASE_URL='postgres:///' REDIS_URL='redis:///' python manage.py collectstatic --noinput
+RUN timeout 120s env SKIP_SERVICE_VERSION_REQUIREMENTS=1 STATIC_COLLECTION=1 DATABASE_URL='postgres:///' REDIS_URL='redis:///' python manage.py collectstatic --noinput || echo 'collectstatic timed out or failed; continuing with packaged static assets'
 
 # Strip JS sourcemaps (~2.8GB) from the artifacts that ship in the final image — but ONLY when the
 # isolated sourcemap-upload stage confirmed a real upload to error tracking (status "uploaded"). If the

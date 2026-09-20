@@ -48,13 +48,13 @@ services:
             - kafka
             - zookeeper
         volumes:
-            - ./posthog/posthog/idl:/idl
-            - ./posthog/docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-            - ./posthog/docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
-            - ./posthog/docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
-            - ./posthog/docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
-            - ./posthog/docker/clickhouse/user_defined_function.xml:/etc/clickhouse-server/user_defined_function.xml
-            - ./posthog/posthog/user_scripts:/var/lib/clickhouse/user_scripts
+            - ./posthog/idl:/idl
+            - ./docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+            - ./docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+            - ./docker/clickhouse/user_defined_function.xml:/etc/clickhouse-server/user_defined_function.xml
+            - ./posthog/user_scripts:/var/lib/clickhouse/user_scripts
             - clickhouse-data:/var/lib/clickhouse
 
     zookeeper:
@@ -154,7 +154,7 @@ services:
         extends:
             file: docker-compose.base.yml
             service: web
-        command: /compose/start
+        command: "python -m granian --interface asgi posthog.asgi:application --host 0.0.0.0 --log-level info --workers 1 --workers-kill-timeout 5"
         logging: *default-logging
         volumes:
             - ./compose:/compose
@@ -245,8 +245,11 @@ services:
             CDP_VALKEY_PORT: 6379
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
             PERSONS_DATABASE_URL: 'postgres://posthog:posthog@db:5432/posthog'
+            CYCLOTRON_NODE_DATABASE_URL: 'postgres://posthog:posthog@db:5432/posthog'
             BEHAVIORAL_COHORTS_DATABASE_URL: 'postgres://posthog:posthog@db:5432/posthog'
             OTEL_EXPORTER_OTLP_ENDPOINT: ''
+            PERSONHOG_ADDR: personhog-router:50052
+            PERSONHOG_ENABLED: "true"
         volumes:
             - ./share:/share
         depends_on:
@@ -331,11 +334,15 @@ services:
         logging: *default-logging
         environment:
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
+            PERSONHOG_ADDR: personhog-router:50052
+            PERSONHOG_ENABLED: "true"
             ERROR_TRACKING_CYMBAL_BASE_URL: 'http://cymbal:3302'
         depends_on:
-            - db
-            - redis7
-            - kafka
+          - db
+          - redis7
+          - kafka
+        volumes:
+          - "./share:/code/nodejs/share:ro"
 
     ingestion-logs:
         extends:
@@ -384,7 +391,7 @@ services:
         # Transitional legacy MinIO source for hobby migrations.
         # Dev/CI stacks use SeaweedFS-backed objectstorage from docker-compose.base.yml,
         # but hobby keeps MinIO so bin/migrate-storage-hobby still has a MinIO source.
-        image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+        image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
         restart: on-failure
         environment:
             MINIO_ROOT_USER: object_storage_root_user
@@ -453,7 +460,7 @@ services:
         ports:
             - 7233:7233
         volumes:
-            - ./posthog/docker/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+            - ./docker/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
     elasticsearch:
         extends:
             file: docker-compose.base.yml
@@ -479,7 +486,7 @@ services:
             db:
                 condition: service_healthy
     temporal-django-worker:
-        command: /compose/temporal-django-worker
+        command: /code/bin/temporal-django-worker
         extends:
             file: docker-compose.base.yml
             service: temporal-django-worker
@@ -534,7 +541,7 @@ services:
     # AI Event Capture (for $ai_* events)
     capture-ai:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: capture-ai
@@ -545,7 +552,7 @@ services:
 
     capture:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: capture
@@ -553,7 +560,7 @@ services:
 
     capture-logs:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: capture-logs
@@ -561,7 +568,7 @@ services:
 
     replay-capture:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: replay-capture
@@ -569,7 +576,7 @@ services:
 
     property-defs-rs:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: property-defs-rs
@@ -588,11 +595,11 @@ services:
         environment:
             - LIVESTREAM_JWT_SECRET=${POSTHOG_SECRET}
         volumes:
-            - ./posthog/docker/livestream/configs-hobby.yml:/configs/configs.yml
+            - ./docker/livestream/configs-hobby.yml:/configs/configs.yml
 
     personhog-replica:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: personhog-replica
@@ -605,7 +612,7 @@ services:
 
     personhog-router:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: personhog-router
@@ -615,7 +622,7 @@ services:
 
     feature-flags:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: feature-flags
@@ -626,7 +633,7 @@ services:
 
     hypercache-server:
         build:
-            context: ./posthog/rust
+            context: ./rust
         extends:
             file: docker-compose.base.yml
             service: hypercache-server
@@ -703,7 +710,7 @@ services:
     cymbal:
         image: ghcr.io/posthog/posthog/cymbal:master
         build:
-            context: ./posthog/rust
+            context: ./rust
             args:
                 BIN: cymbal
         restart: on-failure
@@ -747,7 +754,7 @@ services:
     cymbal-resolution:
         image: ghcr.io/posthog/posthog/cymbal:master
         build:
-            context: ./posthog/rust
+            context: ./rust
             args:
                 BIN: cymbal
         restart: on-failure

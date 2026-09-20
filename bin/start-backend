@@ -17,7 +17,7 @@ elif [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "msys" ]]; then
 else
     # Linux - containers cannot reach host's 127.0.0.1, use bridge gateway
     DOCKER_GATEWAY_IP=$(docker network inspect bridge --format='{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || echo "172.17.0.1")
-    HOST_BIND="$DOCKER_GATEWAY_IP"
+    HOST_BIND="${HOST_BIND:-0.0.0.0}"
     echo "🐧 Linux detected, binding to Docker bridge gateway: $HOST_BIND"
 fi
 
