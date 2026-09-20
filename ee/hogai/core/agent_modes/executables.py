@@ -43,7 +43,7 @@ from ee.hogai.core.agent_modes.prompts import (
 )
 from ee.hogai.core.agent_modes.toolkit import AgentToolkitManager
 from ee.hogai.core.executable import BaseAgentExecutable
-from ee.hogai.llm import MaxChatAnthropic
+from ee.hogai.llm import MaxChatOpenAI
 from ee.hogai.tool import MaxTool, ToolMessagesArtifact
 from ee.hogai.tool_errors import MaxToolError
 from ee.hogai.utils.anthropic import add_cache_control, convert_to_anthropic_messages
@@ -274,7 +274,7 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         gateway_kwargs = self._get_gateway_kwargs()
         is_routing_through_llm_gateway = bool(gateway_kwargs)
 
-        base_model = MaxChatAnthropic(
+        base_model = MaxChatOpenAI(
             model="claude-sonnet-4-6",
             streaming=True,
             stream_usage=True,
