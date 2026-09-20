@@ -19,7 +19,7 @@ from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.runnables import ensure_config
 from langchain_openai import ChatOpenAI
 from prometheus_client import Counter
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 from posthog.models import Team, User
 from posthog.settings import CLOUD_DEPLOYMENT
@@ -200,7 +200,7 @@ class MaxChatOpenAI(MaxChatMixin, ChatOpenAI):
         # Use the configured MiMo OpenAI-compatible endpoint for self-hosted AI.
         if getattr(settings, "MIMO_API_KEY", ""):
             self.openai_api_base = settings.MIMO_BASE_URL
-            self.openai_api_key = settings.MIMO_API_KEY
+            self.openai_api_key = SecretStr(settings.MIMO_API_KEY)
             self.model_name = settings.MIMO_SUPPORTED_MODELS[0]
         if settings.IN_EVAL_TESTING and not self.service_tier and self.model_name in OPENAI_FLEX_MODELS:
             self.service_tier = "flex"  # 50% cheaper than default tier, but slower
@@ -384,7 +384,7 @@ class MaxChatMiMo(MaxChatMixin, ChatOpenAI):
         if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
             self.openai_api_base = settings.MIMO_BASE_URL
         if not self.openai_api_key:
-            self.openai_api_key = settings.MIMO_API_KEY
+            self.openai_api_key = SecretStr(settings.MIMO_API_KEY)
 
 
 class MaxChatCustomLLM(MaxChatMixin, ChatOpenAI):
