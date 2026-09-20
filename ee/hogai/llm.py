@@ -197,6 +197,11 @@ class MaxChatOpenAI(MaxChatMixin, ChatOpenAI):
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
+        # Use the configured MiMo OpenAI-compatible endpoint for self-hosted AI.
+        if getattr(settings, "MIMO_API_KEY", ""):
+            self.openai_api_base = settings.MIMO_BASE_URL
+            self.openai_api_key = settings.MIMO_API_KEY
+            self.model_name = settings.MIMO_SUPPORTED_MODELS[0]
         if settings.IN_EVAL_TESTING and not self.service_tier and self.model_name in OPENAI_FLEX_MODELS:
             self.service_tier = "flex"  # 50% cheaper than default tier, but slower
 
