@@ -486,7 +486,7 @@ services:
             db:
                 condition: service_healthy
     temporal-django-worker:
-        command: /code/bin/temporal-django-worker
+        command: /code/bin/temporal-django-worker --task-queue max-ai-task-queue
         extends:
             file: docker-compose.base.yml
             service: temporal-django-worker
