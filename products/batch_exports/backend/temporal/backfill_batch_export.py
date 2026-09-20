@@ -822,7 +822,7 @@ def backfill_range(
     end_at: dt.datetime | None,
     step: dt.timedelta,
     timezone: str | None = None,
-) -> typing.Generator[tuple[dt.datetime | None, dt.datetime]]:
+) -> typing.Iterator[tuple[dt.datetime | None, dt.datetime]]:
     """Generate range of dates between start_at and end_at.
 
     Args:
