@@ -27,6 +27,7 @@ sudo -n docker rm "$GEOIP_CONTAINER" >/dev/null
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d db
 sleep 10
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate --noinput
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate_clickhouse
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking
 for _ in $(seq 1 90); do
