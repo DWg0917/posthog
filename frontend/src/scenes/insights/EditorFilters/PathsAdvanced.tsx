@@ -3,11 +3,10 @@ import { useState } from 'react'
 
 import { LemonInput, LemonSwitch } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 import { LemonLabel } from 'lib/lemon-ui/LemonLabel/LemonLabel'
 import { pathsDataLogic } from 'scenes/paths/pathsDataLogic'
 
-import { AvailableFeature, EditorFilterProps, PathEdgeParameters } from '~/types'
+import { EditorFilterProps, PathEdgeParameters } from '~/types'
 
 import { PathCleaningFilter } from '../filters/PathCleaningFilter'
 
@@ -35,7 +34,6 @@ export function PathsAdvanced({ insightProps, ...rest }: EditorFilterProps): JSX
 
     return (
         <div className="flex flex-col gap-4">
-            <PayGateMini feature={AvailableFeature.PATHS_ADVANCED} featureDetail="paths-advanced-filter">
                 <div className="flex flex-col gap-2">
                     <LemonLabel info="Determines the maximum number of path nodes that can be generated. If necessary certain items will be grouped.">
                         Maximum number of paths
@@ -114,7 +112,6 @@ export function PathsAdvanced({ insightProps, ...rest }: EditorFilterProps): JSX
                     </div>
                     <PathCleaningFilter insightProps={insightProps} {...rest} />
                 </div>
-            </PayGateMini>
 
             {/* Show full URLs toggle - outside paywall */}
             <div>

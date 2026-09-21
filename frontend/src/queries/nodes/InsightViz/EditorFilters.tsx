@@ -25,13 +25,12 @@ import { WebAnalyticsEditorFilters } from 'scenes/insights/EditorFilters/WebAnal
 import { insightLogic } from 'scenes/insights/insightLogic'
 import { insightVizDataLogic } from 'scenes/insights/insightVizDataLogic'
 import { FunnelVizType } from 'scenes/insights/views/Funnels/FunnelVizType'
-import { userLogic } from 'scenes/userLogic'
 
 import { StickinessCriteria } from '~/queries/nodes/InsightViz/StickinessCriteria'
 import { FunnelsQuery, InsightQueryNode, WebOverviewQuery, WebStatsTableQuery } from '~/queries/schema/schema-general'
 import { isWebAnalyticsInsightQuery } from '~/queries/utils'
 import {
-    AvailableFeature,
+
     ChartDisplayType,
     EditorFilterProps,
     FunnelVizType as FunnelVizTypeEnum,
@@ -102,7 +101,7 @@ export function EditorFilters({ query, showing, embedded }: EditorFiltersProps):
         isStepsFunnel ||
         isTrendsFunnel ||
         isRetention
-    const hasPathsAdvanced = hasAvailableFeature(AvailableFeature.PATHS_ADVANCED)
+    const hasPathsAdvanced = true
     const hasAttribution = isStepsFunnel || isTrendsFunnel
     const hasPathsHogQL = isPaths && pathsFilter?.includeEventTypes?.includes(PathType.HogQL)
     const displayGoalLines =

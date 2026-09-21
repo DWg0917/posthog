@@ -5,9 +5,7 @@ import { LemonSelect } from '@posthog/lemon-ui'
 import { insightLogic } from 'scenes/insights/insightLogic'
 import { DEFAULT_STEP_LIMIT } from 'scenes/paths/pathsDataLogic'
 import { pathsDataLogic } from 'scenes/paths/pathsDataLogic'
-import { userLogic } from 'scenes/userLogic'
 
-import { AvailableFeature } from '~/types'
 
 interface StepOption {
     label: string
@@ -18,7 +16,6 @@ export function PathStepPicker(): JSX.Element {
     const { insightProps, editingDisabledReason } = useValues(insightLogic)
     const { pathsFilter } = useValues(pathsDataLogic(insightProps))
     const { updateInsightFilter } = useActions(pathsDataLogic(insightProps))
-    const { hasAvailableFeature } = useValues(userLogic)
 
     const { stepLimit } = pathsFilter || {}
 
