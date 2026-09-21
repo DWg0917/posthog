@@ -58,7 +58,6 @@ export interface EditorFiltersProps {
 }
 
 export function EditorFilters({ query, showing, embedded }: EditorFiltersProps): JSX.Element | null {
-    const { hasAvailableFeature } = useValues(userLogic)
 
     const { insightProps } = useValues(insightLogic)
     const {
