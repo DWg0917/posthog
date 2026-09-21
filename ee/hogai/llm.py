@@ -87,12 +87,31 @@ class MaxChatMixin(BaseModel):
     These will be merged with the standard properties like $ai_billable and team_id.
     """
     posthog_provider: ClassVar[str]
+    bypass_proxy: bool = False
 
     def model_post_init(self, __context: Any) -> None:
         if self.max_retries is None:
             self.max_retries = 3
         if self.stream_usage is None:
             self.stream_usage = True
+
+    def get_num_tokens_from_messages(self, messages: list[BaseMessage], tools=None, **kwargs: Any) -> int:
+        # OpenAI-compatible providers often use model names unknown to tiktoken.
+        # Use a stable OpenAI encoding as a conservative fallback for context budgeting.
+        kwargs.pop('thinking', None)
+        if not isinstance(self, ChatOpenAI):
+            return super().get_num_tokens_from_messages(messages, **kwargs)
+        try:
+            return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
+        except NotImplementedError as error:
+            if 'get_num_tokens_from_messages() is not presently implemented' not in str(error):
+                raise
+            original = getattr(self, 'tiktoken_model_name', None)
+            try:
+                self.tiktoken_model_name = 'gpt-4o'
+                return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
+            finally:
+                self.tiktoken_model_name = original
 
     def _get_project_org_user_variables(self) -> dict[str, Any]:
         """Note: this function may perform Postgres queries on `self._team`, `self._team.organization`, and `self._user`."""

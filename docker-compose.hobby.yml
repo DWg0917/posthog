@@ -523,6 +523,8 @@ services:
             QWEN_BASE_URL: ${QWEN_BASE_URL:-}
             MIMO_API_KEY: ${MIMO_API_KEY:-}
             MIMO_BASE_URL: ${MIMO_BASE_URL:-}
+            PERSONHOG_ADDR: 'personhog-router:50052'
+            PERSONHOG_ENABLED: 'true'
             CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
             CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
             # LLM Gateway (optional)

@@ -43,7 +43,7 @@ from ee.hogai.core.agent_modes.prompts import (
 )
 from ee.hogai.core.agent_modes.toolkit import AgentToolkitManager
 from ee.hogai.core.executable import BaseAgentExecutable
-from ee.hogai.llm import MaxChatOpenAI
+from ee.hogai.llm import MaxChatAnthropic, MaxChatCustomLLM, MaxChatOpenAI
 from ee.hogai.tool import MaxTool, ToolMessagesArtifact
 from ee.hogai.tool_errors import MaxToolError
 from ee.hogai.utils.anthropic import add_cache_control, convert_to_anthropic_messages
@@ -274,27 +274,56 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         gateway_kwargs = self._get_gateway_kwargs()
         is_routing_through_llm_gateway = bool(gateway_kwargs)
 
-        base_model = MaxChatOpenAI(
-            model="claude-sonnet-4-6",
-            streaming=True,
-            stream_usage=True,
-            user=self._user,
-            team=self._team,
-            betas=[
-                "interleaved-thinking-2025-05-14",
-                "fine-grained-tool-streaming-2025-05-14",
-            ],
-            max_tokens=16384,
-            thinking=self.THINKING_CONFIG,
-            # langchain-anthropic 0.3.x doesn't have a first-class effort field;
-            # forward it via model_kwargs so the Anthropic API receives output_config.
-            model_kwargs={"output_config": {"effort": "medium"}},
-            conversation_start_dt=state.start_dt,
-            billable=True,
-            bypass_proxy=is_routing_through_llm_gateway,
-            posthog_properties=self._get_agent_mode_posthog_properties(state),
-            **gateway_kwargs,
-        )
+        if settings.MIMO_API_KEY:
+            base_model = MaxChatOpenAI(
+                model=settings.MIMO_SUPPORTED_MODELS[0],
+                streaming=True,
+                stream_usage=True,
+                user=self._user,
+                team=self._team,
+                max_tokens=16384,
+                conversation_start_dt=state.start_dt,
+                billable=True,
+                bypass_proxy=is_routing_through_llm_gateway,
+                posthog_properties=self._get_agent_mode_posthog_properties(state),
+                **gateway_kwargs,
+            )
+        elif settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL:
+            custom_models = [model.strip() for model in settings.CUSTOM_LLM_MODELS.split(',') if model.strip()]
+            base_model = MaxChatCustomLLM(
+                model=custom_models[0] if custom_models else 'gpt-4o',
+                streaming=True,
+                stream_usage=True,
+                user=self._user,
+                team=self._team,
+                max_tokens=16384,
+                conversation_start_dt=state.start_dt,
+                billable=True,
+                bypass_proxy=is_routing_through_llm_gateway,
+                posthog_properties=self._get_agent_mode_posthog_properties(state),
+                **gateway_kwargs,
+            )
+        else:
+            base_model = MaxChatAnthropic(
+                model='claude-sonnet-4-6',
+                streaming=True,
+                stream_usage=True,
+                user=self._user,
+                team=self._team,
+                betas=[
+                    'interleaved-thinking-2025-05-14',
+                    'fine-grained-tool-streaming-2025-05-14',
+                ],
+                max_tokens=16384,
+                thinking=self.THINKING_CONFIG,
+                model_kwargs={'output_config': {'effort': 'medium'}},
+                conversation_start_dt=state.start_dt,
+                billable=True,
+                bypass_proxy=is_routing_through_llm_gateway,
+                posthog_properties=self._get_agent_mode_posthog_properties(state),
+                **gateway_kwargs,
+            )
+
 
         # The agent can operate in loops. Since insight building is an expensive operation, we want to limit a recursion depth.
         # This will remove the functions, so the agent doesn't have any other option but to exit.
