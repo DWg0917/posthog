@@ -205,6 +205,10 @@ class MaxChatOpenAI(MaxChatMixin, ChatOpenAI):
         if settings.IN_EVAL_TESTING and not self.service_tier and self.model_name in OPENAI_FLEX_MODELS:
             self.service_tier = "flex"  # 50% cheaper than default tier, but slower
 
+    def get_num_tokens_from_messages(self, messages, tools=None, **kwargs):
+        kwargs.pop("thinking", None)
+        return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
+
     def _enrich_responses_api_model_kwargs(self, project_org_user_variables: dict[str, Any]) -> None:
         """Mutate the provided model_kwargs dict in-place, ensuring the project/org/user context is present.
 
