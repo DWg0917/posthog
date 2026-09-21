@@ -20,7 +20,7 @@ export function PathStepPicker(): JSX.Element {
     const { stepLimit } = pathsFilter || {}
 
     const MIN = 2,
-        MAX = hasAvailableFeature(AvailableFeature.PATHS_ADVANCED) ? 20 : 5
+        MAX = 20
 
     const options: StepOption[] = Array.from(Array.from(Array.from(Array(MAX + 1).keys()).slice(MIN)), (v) => ({
         label: `${v} Steps`,
