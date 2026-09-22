@@ -3045,7 +3045,9 @@ database "posthog" {
       topic_list           = "kafka_topic_list = 'clickhouse_events_json'"
       group_name           = "kafka_group_name = 'group1'"
       format               = "kafka_format = 'JSONEachRow'"
+      num_consumers        = 8
       skip_broken_messages = 100
+      thread_per_consumer  = true
     }
   }
 
@@ -3161,7 +3163,9 @@ database "posthog" {
       topic_list           = "kafka_topic_list = 'clickhouse_events_json'"
       group_name           = "kafka_group_name = 'clickhouse_events_json_native_json'"
       format               = "kafka_format = 'JSONEachRow'"
+      num_consumers        = 8
       skip_broken_messages = 100
+      thread_per_consumer  = true
     }
   }
 

@@ -1,7 +1,7 @@
 # Hobby ingestion scaling
 
-The hobby deployment uses eight partitions for `events_plugin_ingestion` and `clickhouse_events_json`, four `ingestion-general` replicas, and eight consumers on each of the two ClickHouse event Kafka tables.
-Set `INGESTION_GENERAL_REPLICAS` in `.env` to change the replica count.
+The hobby deployment defaults to eight partitions for `events_plugin_ingestion` and `clickhouse_events_json`, four `ingestion-general` replicas, and eight consumers on each of the two ClickHouse event Kafka tables.
+Set `INGESTION_TOPIC_PARTITIONS`, `CLICKHOUSE_KAFKA_CONSUMERS`, and `INGESTION_GENERAL_REPLICAS` in `.env` to change the sizing. Consumers cannot exceed the partition count.
 The Kafka broker remains a single broker with replication factor one.
 
 `deploy.sh` applies the Kafka Engine consumer configuration after services start.
@@ -25,8 +25,8 @@ Partitions cannot be reduced in place.
 To apply the consumer settings to an existing eight-partition installation:
 
 ```sh
-python3 bin/scale_hobby_consumers.py --apply --backup-dir "$PWD/share/ingestion-backups"
-sudo docker compose --env-file .env -f docker-compose.hobby.yml up -d --no-deps --scale ingestion-general=4 ingestion-general
+python3 bin/scale_hobby_consumers.py --apply --partitions 16 --consumers 12 --backup-dir "$PWD/share/ingestion-backups"
+sudo docker compose --env-file .env -f docker-compose.hobby.yml up -d --no-deps --scale ingestion-general=6 ingestion-general
 ```
 
 To inspect the plan and save definitions without changing the tables, omit `--apply`.

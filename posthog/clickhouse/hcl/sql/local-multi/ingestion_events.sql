@@ -35,7 +35,7 @@ CREATE TABLE posthog.kafka_events_json_native_json (
   dmat_string_7 Nullable(String),
   dmat_string_8 Nullable(String),
   dmat_string_9 Nullable(String)
-) ENGINE = Kafka() SETTINGS kafka_broker_list = 'msk_cluster', kafka_format = 'kafka_format = \'JSONEachRow\'', kafka_group_name = 'kafka_group_name = \'clickhouse_events_json_native_json\'', kafka_skip_broken_messages = 100, kafka_topic_list = 'kafka_topic_list = \'clickhouse_events_json\'';
+) ENGINE = Kafka() SETTINGS kafka_broker_list = 'msk_cluster', kafka_format = 'kafka_format = \'JSONEachRow\'', kafka_group_name = 'kafka_group_name = \'clickhouse_events_json_native_json\'', kafka_num_consumers = 8, kafka_skip_broken_messages = 100, kafka_thread_per_consumer = 1, kafka_topic_list = 'kafka_topic_list = \'clickhouse_events_json\'';
 CREATE TABLE posthog.kafka_logs_avro (
   uuid String,
   trace_id String,

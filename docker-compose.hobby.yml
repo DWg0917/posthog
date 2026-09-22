@@ -696,7 +696,7 @@ services:
                 for topic in $$TOPICS; do
                     PARTITIONS=1
                     case "$$topic" in
-                        events_plugin_ingestion|clickhouse_events_json) PARTITIONS=8 ;;
+                        events_plugin_ingestion|clickhouse_events_json) PARTITIONS=${INGESTION_TOPIC_PARTITIONS:-8} ;;
                     esac
                     if rpk topic create "$$topic" --brokers kafka:9092 -p "$$PARTITIONS" -r 1 2>&1; then
                         echo "Topic $$topic created successfully"

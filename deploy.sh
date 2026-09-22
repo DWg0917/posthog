@@ -4,12 +4,22 @@ cd "$(dirname "$0")"
 ENV_FILE=${ENV_FILE-.env}
 COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.hobby.yml}
 DOMAIN=${DOMAIN-dwg.asia}
-INGESTION_GENERAL_REPLICAS=${INGESTION_GENERAL_REPLICAS:-4}
 if [ ! -f "$ENV_FILE" ]; then
   cp .env.example "$ENV_FILE"
   SECRET=$(openssl rand -hex 16)
-  printf '%s\n' "DOMAIN=$DOMAIN" "SITE_URL=https://$DOMAIN" "CADDY_HOST=$DOMAIN" "TLS_BLOCK=" "POSTHOG_SECRET=$SECRET" "ENCRYPTION_SALT_KEYS=$SECRET" "POSTHOG_APP_TAG=latest" "POSTHOG_NODE_TAG=latest" "REGISTRY_URL=posthog-custom" "BUILD_LOCAL_IMAGES=1" >> "$ENV_FILE"
+  printf '%s\n' "DOMAIN=$DOMAIN" "SITE_URL=https://$DOMAIN" "CADDY_HOST=$DOMAIN" "TLS_BLOCK=" "POSTHOG_SECRET=$SECRET" "ENCRYPTION_SALT_KEYS=$SECRET" "POSTHOG_APP_TAG=latest" "POSTHOG_NODE_TAG=latest" "REGISTRY_URL=posthog-custom" "BUILD_LOCAL_IMAGES=1" "INGESTION_GENERAL_REPLICAS=4" "INGESTION_TOPIC_PARTITIONS=8" "CLICKHOUSE_KAFKA_CONSUMERS=8" >> "$ENV_FILE"
 fi
+
+env_value() {
+  awk -F= -v key="$1" '$1 == key {print substr($0, index($0, "=") + 1); exit}' "$ENV_FILE"
+}
+
+INGESTION_GENERAL_REPLICAS=${INGESTION_GENERAL_REPLICAS:-$(env_value INGESTION_GENERAL_REPLICAS)}
+INGESTION_GENERAL_REPLICAS=${INGESTION_GENERAL_REPLICAS:-4}
+INGESTION_TOPIC_PARTITIONS=${INGESTION_TOPIC_PARTITIONS:-$(env_value INGESTION_TOPIC_PARTITIONS)}
+INGESTION_TOPIC_PARTITIONS=${INGESTION_TOPIC_PARTITIONS:-8}
+CLICKHOUSE_KAFKA_CONSUMERS=${CLICKHOUSE_KAFKA_CONSUMERS:-$(env_value CLICKHOUSE_KAFKA_CONSUMERS)}
+CLICKHOUSE_KAFKA_CONSUMERS=${CLICKHOUSE_KAFKA_CONSUMERS:-8}
 chmod 600 "$ENV_FILE"
 sudo -n docker info >/dev/null
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
@@ -34,7 +44,10 @@ sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web py
 if ! sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U posthog -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = cyclotron_jobs)" | grep -q t; then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U posthog -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --scale ingestion-general="$INGESTION_GENERAL_REPLICAS"
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking
-python3 bin/scale_hobby_consumers.py --apply --consumers 8 --backup-dir "${INGESTION_BACKUP_DIR:-$PWD/share/ingestion-backups}"
+python3 bin/scale_hobby_consumers.py --apply \
+  --partitions "$INGESTION_TOPIC_PARTITIONS" \
+  --consumers "$CLICKHOUSE_KAFKA_CONSUMERS" \
+  --backup-dir "${INGESTION_BACKUP_DIR:-$PWD/share/ingestion-backups}"
 for _ in $(seq 1 90); do
   if curl -kfsS --resolve "$DOMAIN:443:127.0.0.1" --max-time 5 "https://$DOMAIN/_health" >/dev/null; then
     echo "PostHog is healthy: https://$DOMAIN"

@@ -111,15 +111,19 @@ def ensure_topic_partitions(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--partitions", type=int, default=None)
     parser.add_argument("--consumers", type=int, default=8)
     parser.add_argument("--backup-dir", type=pathlib.Path, required=True)
     args = parser.parse_args()
-    if not 1 <= args.consumers <= 8:
-        raise SystemExit(
-            "Consumer count must be between 1 and 8; verify topic partitions before increasing it."
-        )
+    partitions = args.partitions if args.partitions is not None else args.consumers
+    if not 1 <= partitions <= 1024:
+        raise SystemExit("Partition count must be between 1 and 1024.")
+    if not 1 <= args.consumers <= 1024:
+        raise SystemExit("Consumer count must be between 1 and 1024.")
+    if args.consumers > partitions:
+        raise SystemExit("Consumer count cannot exceed the topic partition count.")
     required_topics = ("events_plugin_ingestion", "clickhouse_events_json")
-    ensure_topic_partitions(required_topics, args.consumers, args.apply)
+    ensure_topic_partitions(required_topics, partitions, args.apply)
     rows = [
         json.loads(row)
         for row in query(
