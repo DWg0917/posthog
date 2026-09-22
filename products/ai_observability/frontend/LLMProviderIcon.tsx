@@ -44,7 +44,14 @@ export function LLMProviderIcon({
         )
     }
 
-    return null
+    return (
+    <span
+      className={'inline-flex items-center justify-center rounded bg-border text-xs font-semibold uppercase ' + className}
+      title={LLM_PROVIDER_LABELS[provider] ?? provider}
+    >
+      {(LLM_PROVIDER_LABELS[provider] ?? provider).slice(0, 2)}
+    </span>
+  )
 }
 
 export const LLM_PROVIDER_SELECT_OPTIONS = (Object.keys(LLM_PROVIDER_LABELS) as LLMProvider[]).map((provider) => ({
