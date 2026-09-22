@@ -266,6 +266,8 @@ services:
             file: docker-compose.base.yml
             service: ingestion-general
         image: ${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}
+        deploy:
+            replicas: ${INGESTION_GENERAL_REPLICAS:-4}
         logging: *default-logging
         environment:
             PERSONS_DATABASE_URL: 'postgres://posthog:posthog@db:5432/posthog'
@@ -673,7 +675,8 @@ services:
                 # to (see analytics/outputs/registry.ts). Auto-create only fires on producer-first
                 # writes, so pre-create them here.
                 # Note: $$ escapes $ for docker-compose variable substitution
-                TOPICS="clickhouse_events_json \
+                TOPICS="events_plugin_ingestion \
+                    clickhouse_events_json \
                     clickhouse_ai_events_json \
                     clickhouse_heatmap_events \
                     clickhouse_flag_evaluations \
@@ -691,7 +694,11 @@ services:
                     log_entries \
                     clickhouse_tophog"
                 for topic in $$TOPICS; do
-                    if rpk topic create "$$topic" --brokers kafka:9092 -p 1 -r 1 2>&1; then
+                    PARTITIONS=1
+                    case "$$topic" in
+                        events_plugin_ingestion|clickhouse_events_json) PARTITIONS=8 ;;
+                    esac
+                    if rpk topic create "$$topic" --brokers kafka:9092 -p "$$PARTITIONS" -r 1 2>&1; then
                         echo "Topic $$topic created successfully"
                     else
                         if rpk topic list --brokers kafka:9092 | grep -q "$$topic"; then
