@@ -27,7 +27,7 @@ from ee.hogai.artifacts.utils import unwrap_visualization_artifact_content
 from ee.hogai.core.mixins import TaxonomyUpdateDispatcherNodeMixin
 from ee.hogai.core.node import AssistantNode
 from ee.hogai.core.shared_prompts import CORE_MEMORY_PROMPT
-from ee.hogai.llm import MaxChatOpenAI
+from ee.hogai.llm import get_configured_chat_model
 from ee.hogai.utils.helpers import dereference_schema, format_events_yaml
 from ee.hogai.utils.types import AssistantState, PartialAssistantState
 
@@ -142,7 +142,7 @@ class QueryPlannerNode(TaxonomyUpdateDispatcherNodeMixin, AssistantNode):
         # Get dynamic entity tools with correct types for this team
         dynamic_retrieve_entity_properties, dynamic_retrieve_entity_property_values = self._get_dynamic_entity_tools()
 
-        return MaxChatOpenAI(
+        return get_configured_chat_model(
             model="o4-mini",
             use_responses_api=True,
             streaming=False,

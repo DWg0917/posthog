@@ -3,7 +3,6 @@ import { router } from 'kea-router'
 
 import { LemonButton, LemonDialog, LemonInput, LemonSelect, LemonTable, LemonTag, lemonToast } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 import { RestrictionScope, useRestrictedArea } from 'lib/components/RestrictedArea'
 import { TZLabel } from 'lib/components/TZLabel'
 import { OrganizationMembershipLevel } from 'lib/constants'
@@ -18,7 +17,7 @@ import { getChangeRequestButtonVisibility } from 'scenes/approvals/changeRequest
 import { getApprovalActionLabel, getApprovalResourceName, getApprovalResourceUrl } from 'scenes/approvals/utils'
 import { urls } from 'scenes/urls'
 
-import { AvailableFeature, ChangeRequest, ChangeRequestState } from '~/types'
+import { ChangeRequest, ChangeRequestState } from '~/types'
 
 export function ChangeRequestsList(): JSX.Element {
     const { changeRequests, changeRequestsDataLoading, filters, hasMore } = useValues(approvalsLogic)
@@ -119,7 +118,6 @@ export function ChangeRequestsList(): JSX.Element {
     ]
 
     return (
-        <PayGateMini feature={AvailableFeature.APPROVALS} featureDetail="approval-change-requests">
             <div className="space-y-4">
                 <div className={cn('flex flex-wrap gap-2 justify-between')}>
                     <div className="flex gap-2 items-center">
@@ -171,7 +169,6 @@ export function ChangeRequestsList(): JSX.Element {
                     }
                 />
             </div>
-        </PayGateMini>
     )
 }
 

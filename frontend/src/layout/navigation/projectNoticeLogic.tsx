@@ -662,12 +662,16 @@ export const projectNoticeLogic = kea<projectNoticeLogicType>([
                             message: 'Please verify your email address.',
                             action: {
                                 'data-attr': 'unverified-email-cta',
-                                onClick: async () => {
-                        if (user && (await verifyEmailLogic.actions.requestVerificationCode(user.uuid))) {
-                            router.actions.push(urls.verifyEmail(user.uuid))
-                        }
-                    },
-                                children: 'Send verification email',
+            onClick: async () => {
+                if (!user) {
+                    return
+                }
+
+                // Always open the code entry page, even when the resend request is rate-limited.
+                await verifyEmailLogic.actions.requestVerificationCode(user.uuid)
+                router.actions.push(urls.verifyEmail(user.uuid))
+            },
+            children: 'Send verification email',
                             },
                             type: 'warning',
                         }

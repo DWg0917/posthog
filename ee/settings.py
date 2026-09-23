@@ -98,6 +98,9 @@ OPENAI_BASE_URL = get_from_env("OPENAI_BASE_URL", "https://api.openai.com/v1")
 # GLM (智谱 AI) - https://open.bigmodel.cn/
 GLM_API_KEY = get_from_env("GLM_API_KEY", "")
 GLM_BASE_URL = get_from_env("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+AI_PROVIDER = get_from_env("AI_PROVIDER", "")
+LLM_PROVIDER = get_from_env("LLM_PROVIDER", "")
+AI_MODEL = get_from_env("AI_MODEL", "")
 # GLM supported models list
 GLM_SUPPORTED_MODELS = ["glm-4", "glm-4-plus", "glm-4-flash", "glm-4v", "codegeex-4"]
 

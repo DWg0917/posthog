@@ -12,7 +12,6 @@ import {
     Tooltip,
 } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 import { useRestrictedArea } from 'lib/components/RestrictedArea'
 import { OrganizationMembershipLevel } from 'lib/constants'
 import { More } from 'lib/lemon-ui/LemonButton/More'
@@ -24,7 +23,6 @@ import { APPROVAL_ACTIONS, ApprovalActionKey, getApprovalActionLabel } from 'sce
 import { membersLogic } from 'scenes/organization/membersLogic'
 import { rolesLogic } from 'scenes/settings/organization/Permissions/Roles/rolesLogic'
 
-import { ApprovalPolicy, AvailableFeature } from '~/types'
 
 import { approvalPoliciesLogic } from './approvalPoliciesLogic'
 
@@ -154,8 +152,7 @@ export function ApprovalPolicies(): JSX.Element {
     ]
 
     return (
-        <PayGateMini feature={AvailableFeature.APPROVALS} featureDetail="approval-policies">
-            <div className="space-y-4">
+        <div className="space-y-4">
                 <div className="flex justify-end items-center">
                     <LemonButton type="primary" onClick={() => setIsCreating(true)} disabledReason={restrictionReason}>
                         Add policy
@@ -174,7 +171,6 @@ export function ApprovalPolicies(): JSX.Element {
                 {isCreating && <ApprovalPolicyModal onClose={() => setIsCreating(false)} />}
                 {editingPolicy && <ApprovalPolicyModal policy={editingPolicy} onClose={() => setEditingPolicy(null)} />}
             </div>
-        </PayGateMini>
     )
 }
 

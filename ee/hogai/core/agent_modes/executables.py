@@ -43,7 +43,7 @@ from ee.hogai.core.agent_modes.prompts import (
 )
 from ee.hogai.core.agent_modes.toolkit import AgentToolkitManager
 from ee.hogai.core.executable import BaseAgentExecutable
-from ee.hogai.llm import MaxChatAnthropic, MaxChatCustomLLM, MaxChatOpenAI
+from ee.hogai.llm import MaxChatAnthropic, MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
 from ee.hogai.tool import MaxTool, ToolMessagesArtifact
 from ee.hogai.tool_errors import MaxToolError
 from ee.hogai.utils.anthropic import add_cache_control, convert_to_anthropic_messages
@@ -273,8 +273,25 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
     def _get_model(self, state: AssistantState, tools: list["MaxTool"]):
         gateway_kwargs = self._get_gateway_kwargs()
         is_routing_through_llm_gateway = bool(gateway_kwargs)
+        configured_provider = (
+            getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")
+        ).strip().lower()
 
-        if settings.MIMO_API_KEY:
+        if configured_provider in {"glm", "zhipu", "zhipuai"}:
+            base_model = MaxChatGLM(
+                model=getattr(settings, "AI_MODEL", "") or "glm-5",
+                streaming=True,
+                stream_usage=True,
+                user=self._user,
+                team=self._team,
+                max_tokens=16384,
+                conversation_start_dt=state.start_dt,
+                billable=True,
+                bypass_proxy=is_routing_through_llm_gateway,
+                posthog_properties=self._get_agent_mode_posthog_properties(state),
+                **gateway_kwargs,
+            )
+        elif configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
             base_model = MaxChatOpenAI(
                 model=settings.MIMO_SUPPORTED_MODELS[0],
                 streaming=True,
@@ -288,7 +305,9 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
                 posthog_properties=self._get_agent_mode_posthog_properties(state),
                 **gateway_kwargs,
             )
-        elif settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL:
+        elif configured_provider == "custom" or (
+            not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL
+        ):
             custom_models = [model.strip() for model in settings.CUSTOM_LLM_MODELS.split(',') if model.strip()]
             base_model = MaxChatCustomLLM(
                 model=custom_models[0] if custom_models else 'gpt-4o',

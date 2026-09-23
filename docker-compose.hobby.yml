@@ -129,6 +129,14 @@ services:
             QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
             MIMO_API_KEY: ${MIMO_API_KEY:-}
             MIMO_BASE_URL: ${MIMO_BASE_URL:-https://token-plan-cn.xiaomimimo.com/v1}
+            AI_PROVIDER: ${AI_PROVIDER:-}
+            LLM_PROVIDER: ${LLM_PROVIDER:-}
+            AI_MODEL: ${AI_MODEL:-}
+            AI_SUPPORTED_MODELS: ${AI_SUPPORTED_MODELS:-}
+            GLM_SUPPORTED_MODELS: ${GLM_SUPPORTED_MODELS:-}
+            MIMO_SUPPORTED_MODELS: ${MIMO_SUPPORTED_MODELS:-}
+            QWEN_SUPPORTED_MODELS: ${QWEN_SUPPORTED_MODELS:-}
+            CUSTOM_LLM_MODELS: ${CUSTOM_LLM_MODELS:-}
             CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
             CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
             # LLM Gateway (optional, for rate limiting and attribution)
@@ -204,6 +212,14 @@ services:
             QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
             MIMO_API_KEY: ${MIMO_API_KEY:-}
             MIMO_BASE_URL: ${MIMO_BASE_URL:-https://token-plan-cn.xiaomimimo.com/v1}
+            AI_PROVIDER: ${AI_PROVIDER:-}
+            LLM_PROVIDER: ${LLM_PROVIDER:-}
+            AI_MODEL: ${AI_MODEL:-}
+            AI_SUPPORTED_MODELS: ${AI_SUPPORTED_MODELS:-}
+            GLM_SUPPORTED_MODELS: ${GLM_SUPPORTED_MODELS:-}
+            MIMO_SUPPORTED_MODELS: ${MIMO_SUPPORTED_MODELS:-}
+            QWEN_SUPPORTED_MODELS: ${QWEN_SUPPORTED_MODELS:-}
+            CUSTOM_LLM_MODELS: ${CUSTOM_LLM_MODELS:-}
             CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}
             CUSTOM_LLM_BASE_URL: ${CUSTOM_LLM_BASE_URL:-}
             # LLM Gateway (optional, for rate limiting and attribution)
@@ -525,6 +541,14 @@ services:
             QWEN_BASE_URL: ${QWEN_BASE_URL:-}
             MIMO_API_KEY: ${MIMO_API_KEY:-}
             MIMO_BASE_URL: ${MIMO_BASE_URL:-}
+            AI_PROVIDER: ${AI_PROVIDER:-}
+            LLM_PROVIDER: ${LLM_PROVIDER:-}
+            AI_MODEL: ${AI_MODEL:-}
+            AI_SUPPORTED_MODELS: ${AI_SUPPORTED_MODELS:-}
+            GLM_SUPPORTED_MODELS: ${GLM_SUPPORTED_MODELS:-}
+            MIMO_SUPPORTED_MODELS: ${MIMO_SUPPORTED_MODELS:-}
+            QWEN_SUPPORTED_MODELS: ${QWEN_SUPPORTED_MODELS:-}
+            CUSTOM_LLM_MODELS: ${CUSTOM_LLM_MODELS:-}
             PERSONHOG_ADDR: 'personhog-router:50052'
             PERSONHOG_ENABLED: 'true'
             CUSTOM_LLM_API_KEY: ${CUSTOM_LLM_API_KEY:-}

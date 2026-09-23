@@ -2,10 +2,8 @@ import { useActions, useValues } from 'kea'
 
 import { LemonTabs } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 
 import { sidePanelStateLogic } from '~/layout/navigation-3000/sidepanel/sidePanelStateLogic'
-import { AvailableFeature, SidePanelTab } from '~/types'
 
 import { AccessControlDefaultSettings } from './AccessControlDefaultSettings'
 import { AccessControlFilters } from './AccessControlFilters'
@@ -112,22 +110,5 @@ export function AccessControls({ projectId }: { projectId: string }): JSX.Elemen
 }
 
 function AccessControlTabContainer(props: { activeTab: AccessControlsTab; children?: React.ReactNode }): JSX.Element {
-    if (props.activeTab === 'roles') {
-        return (
-            <PayGateMini feature={AvailableFeature.ROLE_BASED_ACCESS} featureDetail="resource-access-controls-roles">
-                <PayGateMini feature={AvailableFeature.ACCESS_CONTROL} featureDetail="access-control-roles">
-                    {props.children}
-                </PayGateMini>
-            </PayGateMini>
-        )
-    }
-    if (props.activeTab === 'members') {
-        return (
-            <PayGateMini feature={AvailableFeature.ACCESS_CONTROL} featureDetail="access-control-members">
-                {props.children}
-            </PayGateMini>
-        )
-    }
-
     return <>{props.children}</>
 }

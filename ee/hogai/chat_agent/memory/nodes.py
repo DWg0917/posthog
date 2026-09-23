@@ -42,7 +42,9 @@ from ee.hogai.artifacts.utils import unwrap_visualization_artifact_content
 from ee.hogai.core.agent_modes.const import SlashCommandName
 from ee.hogai.core.mixins import AssistantContextMixin
 from ee.hogai.core.node import AssistantNode
-from ee.hogai.llm import MaxChatOpenAI
+from django.conf import settings
+
+from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
 from ee.hogai.utils.helpers import filter_and_merge_messages, find_last_message_of_type
 from ee.hogai.utils.markdown import remove_markdown
 from ee.hogai.utils.prompt import format_prompt_string
@@ -69,6 +71,21 @@ from .prompts import (
     SCRAPING_VERIFICATION_MESSAGE,
     TOOL_CALL_ERROR_PROMPT,
 )
+
+
+def _build_memory_model(*, user, team, model: str, temperature: float, stop_sequences=None, billable: bool = False):
+    configured_provider = (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+    kwargs = {"temperature": temperature, "disable_streaming": True, "user": user, "team": team, "billable": billable}
+    if stop_sequences is not None:
+        kwargs["stop_sequences"] = stop_sequences
+    if configured_provider in {"glm", "zhipu", "zhipuai"}:
+        return MaxChatGLM(model=getattr(settings, "AI_MODEL", "") or model, **kwargs)
+    if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
+        return MaxChatOpenAI(model=settings.MIMO_SUPPORTED_MODELS[0], **kwargs)
+    if configured_provider == "custom" or (not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL):
+        custom_models = [item.strip() for item in settings.CUSTOM_LLM_MODELS.split(",") if item.strip()]
+        return MaxChatCustomLLM(model=custom_models[0] if custom_models else model, **kwargs)
+    return MaxChatOpenAI(model=model, **kwargs)
 
 
 class MemoryInitializerContextMixin(AssistantContextMixin):
@@ -231,14 +248,9 @@ class MemoryInitializerNode(MemoryInitializerContextMixin, AssistantNode):
         return "continue"
 
     def _model(self):
-        return MaxChatOpenAI(
+        return _build_memory_model(
             model="gpt-5-mini",
-            streaming=True,
-            use_responses_api=True,
-            store=False,  # We can't store, because we want zero data retention
-            reasoning={
-                "summary": "auto",  # Without this, there's no reasoning summaries! Only works with reasoning models
-            },
+            temperature=0.3,
             user=self._user,
             team=self._team,
         ).bind_tools([{"type": "web_search"}])
@@ -306,10 +318,9 @@ class MemoryOnboardingEnquiryNode(AssistantNode):
 
     @property
     def _model(self):
-        return MaxChatOpenAI(
+        return _build_memory_model(
             model="gpt-4.1",
             temperature=0.3,
-            disable_streaming=True,
             stop_sequences=["[Done]"],
             user=self._user,
             team=self._team,
@@ -364,10 +375,9 @@ class MemoryOnboardingFinalizeNode(AssistantNode):
 
     @property
     def _model(self):
-        return MaxChatOpenAI(
+        return _build_memory_model(
             model="gpt-4.1-mini",
             temperature=0.3,
-            disable_streaming=True,
             stop_sequences=["[Done]"],
             user=self._user,
             team=self._team,
@@ -438,8 +448,12 @@ class MemoryCollectorNode(MemoryOnboardingShouldRunMixin):
 
     @property
     def _model(self):
-        return MaxChatOpenAI(
-            model="gpt-4.1", temperature=0.3, disable_streaming=True, user=self._user, team=self._team, billable=True
+        return _build_memory_model(
+            model="gpt-4.1",
+            temperature=0.3,
+            user=self._user,
+            team=self._team,
+            billable=True,
         ).bind_tools(memory_collector_tools)
 
     async def _aconstruct_messages(self, state: AssistantState) -> list[BaseMessage]:

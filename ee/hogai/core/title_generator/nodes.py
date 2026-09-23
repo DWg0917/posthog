@@ -1,5 +1,5 @@
 import logging
-from typing import cast
+from typing import Any, cast
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +13,9 @@ from products.posthog_ai.backend.models.assistant import Conversation
 
 from ee.hogai.core.node import AssistantNode
 from ee.hogai.core.title_generator.prompts import TITLE_AND_TOPIC_GENERATION_PROMPT, TITLE_GENERATION_PROMPT
-from ee.hogai.llm import MaxChatOpenAI
+from django.conf import settings
+
+from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
 from ee.hogai.utils.feature_flags import has_conversation_topic_feature_flag
 from ee.hogai.utils.helpers import find_last_message_of_type
 from ee.hogai.utils.types import AssistantState, PartialAssistantState
@@ -80,18 +82,44 @@ class TitleGeneratorNode(AssistantNode):
             logger.exception("title_topic_generation_failed, falling back to title-only")
             return self._generate_title_only(user_input, config), None
 
-    def _build_model(self, *, max_completion_tokens: int, topic_classification: bool) -> MaxChatOpenAI:
+    def _build_model(self, *, max_completion_tokens: int, topic_classification: bool) -> Any:
+        configured_provider = (
+            getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")
+        ).strip().lower()
+        common_kwargs = {
+            "temperature": 0.7,
+            "max_completion_tokens": max_completion_tokens,
+            "user": self._user,
+            "team": self._team,
+            "streaming": False,
+            "stream_usage": False,
+            "disable_streaming": True,
+            "billable": True,
+            "posthog_properties": {"topic_classification": topic_classification},
+        }
+
+        if configured_provider in {"glm", "zhipu", "zhipuai"}:
+            return MaxChatGLM(
+                model=getattr(settings, "AI_MODEL", "") or "glm-5",
+                **common_kwargs,
+            )
+        if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
+            return MaxChatOpenAI(
+                model=settings.MIMO_SUPPORTED_MODELS[0],
+                **common_kwargs,
+            )
+        if configured_provider == "custom" or (
+            not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL
+        ):
+            custom_models = [model.strip() for model in settings.CUSTOM_LLM_MODELS.split(",") if model.strip()]
+            return MaxChatCustomLLM(
+                model=custom_models[0] if custom_models else "gpt-4o",
+                **common_kwargs,
+            )
+
         return MaxChatOpenAI(
             model="gpt-4.1-nano",
-            temperature=0.7,
-            max_completion_tokens=max_completion_tokens,
-            user=self._user,
-            team=self._team,
-            streaming=False,
-            stream_usage=False,
-            disable_streaming=True,
-            billable=True,
-            posthog_properties={"topic_classification": topic_classification},
+            **common_kwargs,
         )
 
     @property

@@ -14,7 +14,6 @@ import {
     Tooltip,
 } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 import { upgradeModalLogic } from 'lib/components/UpgradeModal/upgradeModalLogic'
 import { UserSelectItem } from 'lib/components/UserSelectItem'
 import { LemonTableColumns } from 'lib/lemon-ui/LemonTable'
@@ -30,7 +29,6 @@ import {
     AccessControlTypeMember,
     AccessControlTypeOrganizationAdmins,
     AccessControlTypeRole,
-    AvailableFeature,
     OrganizationMemberType,
     RoleMemberType,
     RoleType,
@@ -57,7 +55,7 @@ export function AccessControlObject(props: AccessControlLogicProps): JSX.Element
                     )}
                 </h2>
                 <p>{props.description}</p>
-                <PayGateMini feature={AvailableFeature.ACCESS_CONTROL} featureDetail="access-control-object-settings">
+
                     <div className="deprecated-space-y-6">
                         {canEditAccessControls === false ? (
                             <LemonBanner type="warning">
@@ -77,14 +75,10 @@ export function AccessControlObject(props: AccessControlLogicProps): JSX.Element
                         <AccessControlObjectUsers />
 
                         {/* Put this inside of Advanced Permissions (access control) so two aren't shown at once */}
-                        <PayGateMini
-                            feature={AvailableFeature.ROLE_BASED_ACCESS}
-                            featureDetail="access-control-object-roles"
-                        >
-                            <AccessControlObjectRoles />
-                        </PayGateMini>
+        {/* Role-based access is available in the self-hosted deployment. */}
+        <AccessControlObjectRoles />
                     </div>
-                </PayGateMini>
+
             </div>
         </BindLogic>
     )
@@ -94,7 +88,6 @@ function AccessControlObjectDefaults(): JSX.Element | null {
     const { accessControlDefault, accessControls, accessControlsLoading, availableLevelsWithNone, inheritedAccess } =
         useValues(accessControlLogic)
     const { updateAccessControlDefault } = useActions(accessControlLogic)
-    const { guardAvailableFeature } = useValues(upgradeModalLogic)
 
     if (!accessControls) {
         // A null level is a real state ("No override") for this select, so it can't double as
@@ -112,9 +105,7 @@ function AccessControlObjectDefaults(): JSX.Element | null {
             inherited={inheritedAccess}
             disabledReason={accessControlsLoading ? 'Loading…' : undefined}
             onChange={(newValue) => {
-                guardAvailableFeature(AvailableFeature.ACCESS_CONTROL, () => {
-                    updateAccessControlDefault(newValue)
-                })
+                updateAccessControlDefault(newValue)
             }}
         />
     )
@@ -132,7 +123,6 @@ function AccessControlObjectUsers(): JSX.Element | null {
         canEditAccessControls,
     } = useValues(accessControlLogic)
     const { updateAccessControlMembers } = useAsyncActions(accessControlLogic)
-    const { guardAvailableFeature } = useValues(upgradeModalLogic)
 
     const [modelOpen, setModelOpen] = useState(false)
 
@@ -253,10 +243,8 @@ function AccessControlObjectUsers(): JSX.Element | null {
                 setModelOpen={setModelOpen}
                 placeholder="Search for team members to add…"
                 onAdd={async (newValues, level) => {
-                    if (guardAvailableFeature(AvailableFeature.ACCESS_CONTROL)) {
-                        await updateAccessControlMembers(newValues.map((member) => ({ member, level })))
-                        setModelOpen(false)
-                    }
+                    await updateAccessControlMembers(newValues.map((member) => ({ member, level })))
+                    setModelOpen(false)
                 }}
                 options={addableMembers.map((member: OrganizationMemberType) => ({
                     key: member.id,
@@ -278,7 +266,6 @@ function AccessControlObjectRoles(): JSX.Element | null {
         canEditAccessControls,
     } = useValues(accessControlLogic)
     const { updateAccessControlRoles } = useAsyncActions(accessControlLogic)
-    const { guardAvailableFeature } = useValues(upgradeModalLogic)
 
     const [modelOpen, setModelOpen] = useState(false)
 
@@ -366,10 +353,8 @@ function AccessControlObjectRoles(): JSX.Element | null {
                 setModelOpen={setModelOpen}
                 placeholder="Search for roles to add…"
                 onAdd={async (newValues, level) => {
-                    if (guardAvailableFeature(AvailableFeature.ROLE_BASED_ACCESS)) {
-                        await updateAccessControlRoles(newValues.map((role) => ({ role, level })))
-                        setModelOpen(false)
-                    }
+                    await updateAccessControlRoles(newValues.map((role) => ({ role, level })))
+                    setModelOpen(false)
                 }}
                 options={addableRoles.map((role: RoleType) => ({
                     key: role.id,

@@ -375,7 +375,7 @@ class MaxChatGLM(MaxChatMixin, ChatOpenAI):
         if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
             self.openai_api_base = settings.GLM_BASE_URL
         if not self.openai_api_key:
-            self.openai_api_key = settings.GLM_API_KEY
+            self.openai_api_key = SecretStr(settings.GLM_API_KEY)
 
 
 class MaxChatQwen(MaxChatMixin, ChatOpenAI):
@@ -424,4 +424,21 @@ class MaxChatCustomLLM(MaxChatMixin, ChatOpenAI):
         if settings.CUSTOM_LLM_BASE_URL:
             self.openai_api_base = settings.CUSTOM_LLM_BASE_URL
         if settings.CUSTOM_LLM_API_KEY:
-            self.openai_api_key = settings.CUSTOM_LLM_API_KEY
+            self.openai_api_key = SecretStr(settings.CUSTOM_LLM_API_KEY)
+
+
+
+def get_configured_chat_model(*, model: str, **kwargs: Any):
+    configured_provider = (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+    provider_kwargs = dict(kwargs)
+    if configured_provider in {"glm", "zhipu", "zhipuai", "mimo", "xiaomi", "custom"}:
+        for unsupported in ("output_version", "use_responses_api", "reasoning"):
+            provider_kwargs.pop(unsupported, None)
+    if configured_provider in {"glm", "zhipu", "zhipuai"}:
+        return MaxChatGLM(model=getattr(settings, "AI_MODEL", "") or model, **provider_kwargs)
+    if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
+        return MaxChatOpenAI(model=settings.MIMO_SUPPORTED_MODELS[0], **provider_kwargs)
+    if configured_provider == "custom" or (not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL):
+        custom_models = [item.strip() for item in settings.CUSTOM_LLM_MODELS.split(",") if item.strip()]
+        return MaxChatCustomLLM(model=custom_models[0] if custom_models else model, **provider_kwargs)
+    return MaxChatOpenAI(model=model, **kwargs)

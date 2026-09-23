@@ -233,6 +233,9 @@ COPY ee ee/
 COPY --from=sourcemap-upload /code/frontend/dist /code/frontend/dist
 COPY --from=frontend-build /code/frontend/src/products.json /code/frontend/src/products.json
 
+ARG COMMIT_HASH
+RUN echo $COMMIT_HASH > /code/commit.txt
+
 # Make sure we build the static files
 RUN timeout 600s env SKIP_SERVICE_VERSION_REQUIREMENTS=1 STATIC_COLLECTION=1 DATABASE_URL='postgres:///' REDIS_URL='redis:///' python manage.py collectstatic --noinput || echo 'collectstatic timed out or failed; continuing with packaged static assets'
 
