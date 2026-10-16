@@ -12,18 +12,21 @@ import (
 
 type config struct {
 	ciMode  bool
+	custom  bool
 	version string
 	domain  string
 }
 
 func parseArgs() config {
 	ciFlag := flag.Bool("ci", false, "Run in non-interactive CI mode")
+	custom := flag.Bool("custom", false, "Run the interactive custom single-server deployment wizard")
 	version := flag.String("version", "latest", "PostHog version to install")
 	domain := flag.String("domain", "", "Domain where PostHog will be accessible")
 	flag.Parse()
 
 	return config{
 		ciMode:  *ciFlag || isCIEnvironment(),
+		custom:  *custom,
 		version: *version,
 		domain:  *domain,
 	}
@@ -68,7 +71,9 @@ func main() {
 	cfg := parseArgs()
 
 	var err error
-	if cfg.ciMode {
+	if cfg.custom {
+		err = tui.RunCustom()
+	} else if cfg.ciMode {
 		err = runCI(cfg)
 	} else {
 		err = runTUI()

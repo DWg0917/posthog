@@ -28,7 +28,22 @@ while [[ $# -gt 0 ]]; do
     *) die "unknown option: $1" ;;
   esac
 done
-env_file_value() { [[ -f "$ENV_FILE" ]] && { grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- || true; }; }
+unquote_env_value() {
+  local value="$1"
+  if [[ "$value" == \'*\' ]]; then
+    value="${value:1:${#value}-2}"
+    value="${value//\\\'/\'}"
+  elif [[ "$value" == \"*\" ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "$value"
+}
+env_file_value() {
+  [[ -f "$ENV_FILE" ]] || return 0
+  local value
+  value=$(grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- || true)
+  unquote_env_value "$value"
+}
 DOMAIN="${CLI_DOMAIN:-${DOMAIN:-$(env_file_value DOMAIN)}}"
 [[ -n "$DOMAIN" ]] || die "DOMAIN is required; pass --domain or export DOMAIN"
 case "$DOMAIN" in *://*|*/*|*[[:space:]]*) die "DOMAIN must be a hostname only" ;; esac
@@ -84,7 +99,9 @@ else
 fi
 
 env_value() {
-  awk -F= -v key="$1" '$1 == key {print substr($0, index($0, "=") + 1); exit}' "$ENV_FILE"
+  local value
+  value=$(awk -F= -v key="$1" '$1 == key {print substr($0, index($0, "=") + 1); exit}' "$ENV_FILE")
+  unquote_env_value "$value"
 }
 
 INGESTION_GENERAL_REPLICAS=${INGESTION_GENERAL_REPLICAS:-$(env_value INGESTION_GENERAL_REPLICAS)}
@@ -96,13 +113,22 @@ CLICKHOUSE_KAFKA_CONSUMERS=${CLICKHOUSE_KAFKA_CONSUMERS:-8}
 chmod 600 "$ENV_FILE"
 sudo -n docker info >/dev/null
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
-APP_IMAGE=posthog-custom:latest
-NODE_IMAGE=posthog-custom-node:latest
-if ! sudo -n docker image inspect "$APP_IMAGE" >/dev/null 2>&1; then
-  sudo -n docker buildx build --progress=plain --load --build-arg COMMIT_HASH="$(git rev-parse --short HEAD)" -t "$APP_IMAGE" -f Dockerfile .
+APP_IMAGE=${POSTHOG_APP_IMAGE:-$(env_value POSTHOG_APP_IMAGE)}
+NODE_IMAGE=${POSTHOG_NODE_IMAGE:-$(env_value POSTHOG_NODE_IMAGE)}
+APP_IMAGE=${APP_IMAGE:-posthog-custom:latest}
+NODE_IMAGE=${NODE_IMAGE:-posthog-custom-node:latest}
+BUILD_LOCAL_IMAGES=${BUILD_LOCAL_IMAGES:-$(env_value BUILD_LOCAL_IMAGES)}
+if [[ "$BUILD_LOCAL_IMAGES" == "1" ]]; then
+  if ! sudo -n docker image inspect "$APP_IMAGE" >/dev/null 2>&1; then
+    sudo -n docker buildx build --progress=plain --load --build-arg COMMIT_HASH="$(git rev-parse --short HEAD)" -t "$APP_IMAGE" -f Dockerfile .
+  fi
+  if ! sudo -n docker image inspect "$NODE_IMAGE" >/dev/null 2>&1; then
+    sudo -n docker buildx build --progress=plain --load --build-arg COMMIT_HASH="$(git rev-parse --short HEAD)" -t "$NODE_IMAGE" -f Dockerfile.node .
+  fi
 fi
-if ! sudo -n docker image inspect "$NODE_IMAGE" >/dev/null 2>&1; then
-  sudo -n docker buildx build --progress=plain --load --build-arg COMMIT_HASH="$(git rev-parse --short HEAD)" -t "$NODE_IMAGE" -f Dockerfile.node .
+if [[ "$BUILD_LOCAL_IMAGES" != "1" ]]; then
+  sudo -n docker pull "$APP_IMAGE"
+  sudo -n docker pull "$NODE_IMAGE"
 fi
 mkdir -p share
 GEOIP_CONTAINER=$(sudo -n docker create "$APP_IMAGE")
@@ -114,7 +140,9 @@ sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web py
 echo "Applying hobby personhog migrations..."
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py apply_persons_migrations --hobby
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate_clickhouse
-if [[ "$(timeout 30s sudo -n docker exec "$(sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q db | head -n1)" psql -U posthog -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'cyclotron_jobs')" 2>/dev/null || true)" != "t" ]] then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U posthog -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi
+POSTGRES_USER=${POSTGRES_USER:-$(env_value POSTGRES_USER)}
+POSTGRES_USER=${POSTGRES_USER:-posthog}
+if [[ "$(timeout 30s sudo -n docker exec "$(sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q db | head -n1)" psql -U "$POSTGRES_USER" -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'cyclotron_jobs')" 2>/dev/null || true)" != "t" ]] then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U "$POSTGRES_USER" -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --scale ingestion-general="$INGESTION_GENERAL_REPLICAS"
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking
 python3 bin/scale_hobby_consumers.py --apply \

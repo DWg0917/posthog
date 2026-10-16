@@ -82,9 +82,9 @@ func InstallDocker() error {
 		{"install", "-d", "-m", "0755", "/etc/apt/keyrings"},
 		{"sh", "-c", "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg"},
 		{"chmod", "a+r", "/etc/apt/keyrings/docker.gpg"},
-		{"sh", "-c", "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable' > /etc/apt/sources.list.d/docker.list"},
+		{"sh", "-c", "CODENAME=$(. /etc/os-release && echo \"$VERSION_CODENAME\"); ARCH=$(dpkg --print-architecture); echo \"deb [arch=$ARCH signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $CODENAME stable\" > /etc/apt/sources.list.d/docker.list"},
 		{"apt", "update"},
-		{"apt", "install", "-y", "docker-ce"},
+		{"apt", "install", "-y", "docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin"},
 	}
 
 	for i, cmdArgs := range commands {
