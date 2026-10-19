@@ -50,6 +50,10 @@ services:
         logging: *default-logging
 
     clickhouse:
+        environment:
+            CLICKHOUSE_DEFAULT_PASSWORD: ${CLICKHOUSE_DEFAULT_PASSWORD:?Set CLICKHOUSE_DEFAULT_PASSWORD in .env}
+            CLICKHOUSE_USER: app
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}
         extends:
             file: docker-compose.base.yml
             service: clickhouse
@@ -66,6 +70,8 @@ services:
             - ./docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
             - ./docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
             - ./docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
+            - ./docker/clickhouse/config.d/hobby-auth.xml:/etc/clickhouse-server/config.d/hobby-auth.xml:ro
+            - ./docker/clickhouse/users.d/hobby-passwords.xml:/etc/clickhouse-server/users.d/hobby-passwords.xml:ro
             - ./docker/clickhouse/config.d/ssl.xml:/etc/clickhouse-server/config.d/ssl.xml
             - ./share/database-certs/clickhouse:/etc/clickhouse-server/certs:ro
             - ./docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml
@@ -105,6 +111,8 @@ services:
             service: worker
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
             SECRET_KEY: $POSTHOG_SECRET
             OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?Set OBJECT_STORAGE_ACCESS_KEY_ID in .env}
@@ -132,9 +140,11 @@ services:
             # from CLICKHOUSE_HOST) whose host defaults to localhost and whose SECURE
             # defaults to true outside DEBUG. Point it at the stack's ClickHouse over
             # plaintext; the other logs-cluster settings already default correctly
-            # (native port 9000, user "default", empty password).
+            # (native port 9000). Credentials are configured explicitly below.
             CLICKHOUSE_LOGS_CLUSTER_HOST: 'clickhouse'
             CLICKHOUSE_LOGS_CLUSTER_SECURE: 'false'
+            CLICKHOUSE_LOGS_CLUSTER_USER: ${CLICKHOUSE_LOGS_CLUSTER_USER:-app}
+            CLICKHOUSE_LOGS_CLUSTER_PASSWORD: ${CLICKHOUSE_LOGS_CLUSTER_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -184,6 +194,8 @@ services:
             - ./compose:/compose
         image: ${POSTHOG_APP_IMAGE:-$REGISTRY_URL:$POSTHOG_APP_TAG}
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
             LIVESTREAM_HOST: 'https://${DOMAIN}/livestream'
             SECRET_KEY: $POSTHOG_SECRET
@@ -215,9 +227,11 @@ services:
             # from CLICKHOUSE_HOST) whose host defaults to localhost and whose SECURE
             # defaults to true outside DEBUG. Point it at the stack's ClickHouse over
             # plaintext; the other logs-cluster settings already default correctly
-            # (native port 9000, user "default", empty password).
+            # (native port 9000). Credentials are configured explicitly below.
             CLICKHOUSE_LOGS_CLUSTER_HOST: 'clickhouse'
             CLICKHOUSE_LOGS_CLUSTER_SECURE: 'false'
+            CLICKHOUSE_LOGS_CLUSTER_USER: ${CLICKHOUSE_LOGS_CLUSTER_USER:-app}
+            CLICKHOUSE_LOGS_CLUSTER_PASSWORD: ${CLICKHOUSE_LOGS_CLUSTER_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -257,6 +271,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
             SECRET_KEY: $POSTHOG_SECRET
             OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?Set OBJECT_STORAGE_ACCESS_KEY_ID in .env}
@@ -302,6 +318,8 @@ services:
             replicas: ${INGESTION_GENERAL_REPLICAS:-4}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             PERSONS_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             BEHAVIORAL_COHORTS_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
@@ -324,6 +342,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SESSION_RECORDING_V2_S3_ACCESS_KEY_ID: 'any'
             SESSION_RECORDING_V2_S3_SECRET_ACCESS_KEY: 'any'
             SESSION_RECORDING_V2_S3_TIMEOUT_MS: 120000
@@ -342,6 +362,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             # Read side of the session recording V2 blob store. Must point at the same
             # SeaweedFS the ingestion-sessionreplay writer uses — without these the
             # service falls back to its localhost:8333 default, so every playback
@@ -367,6 +389,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
             PERSONHOG_ADDR: personhog-router:50052
             PERSONHOG_ENABLED: "true"
@@ -385,6 +409,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             LOGS_REDIS_TLS: 'false'
         depends_on:
             - db
@@ -398,6 +424,8 @@ services:
         image: ${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:${POSTHOG_NODE_TAG:-latest}}
         logging: *default-logging
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             TRACES_REDIS_TLS: 'false'
         depends_on:
             - db
@@ -424,7 +452,7 @@ services:
             CADDY_EXTRA_CONFIG: |
                 {$$TEMPORAL_UI_DOMAIN} {
                     basic_auth {
-                        $$TEMPORAL_UI_USERNAME $$TEMPORAL_UI_PASSWORD_HASH
+                        {$$TEMPORAL_UI_USERNAME} {$$TEMPORAL_UI_PASSWORD_HASH}
                     }
                     reverse_proxy temporal-ui:8080
                 }
@@ -532,6 +560,8 @@ services:
             - ./compose:/compose
         image: ${POSTHOG_APP_IMAGE:-$REGISTRY_URL:$POSTHOG_APP_TAG}
         environment:
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
             SECRET_KEY: $POSTHOG_SECRET
             BROWSERLESS_CDP_URL: 'ws://browserless:3000'
@@ -545,11 +575,13 @@ services:
             # from CLICKHOUSE_HOST) whose host defaults to localhost and whose SECURE
             # defaults to true outside DEBUG. Point it at the stack's ClickHouse over
             # plaintext; the other logs-cluster settings already default correctly
-            # (native port 9000, user "default", empty password). This worker runs
+            # (native port 9000). Credentials are configured explicitly below. This worker runs
             # the logs alert-check Temporal activities, which query ClickHouse under
             # Workload.LOGS.
             CLICKHOUSE_LOGS_CLUSTER_HOST: 'clickhouse'
             CLICKHOUSE_LOGS_CLUSTER_SECURE: 'false'
+            CLICKHOUSE_LOGS_CLUSTER_USER: ${CLICKHOUSE_LOGS_CLUSTER_USER:-app}
+            CLICKHOUSE_LOGS_CLUSTER_PASSWORD: ${CLICKHOUSE_LOGS_CLUSTER_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             # AI provider keys for PostHog's AI features. Blank unless set in .env.
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}

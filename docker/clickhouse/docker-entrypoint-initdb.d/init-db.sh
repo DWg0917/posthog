@@ -7,8 +7,8 @@ cp -r /idl/* /var/lib/clickhouse/format_schemas/
 # system log tables (e.g., system.crash_log) are created. Use timeout to avoid hanging.
 READY=false
 for i in {1..30}; do
-    if clickhouse client --query "select 1" > /dev/null 2>&1; then
-        clickhouse client --query "system flush logs"
+    if clickhouse client --user "${CLICKHOUSE_USER:-default}" --password "${CLICKHOUSE_PASSWORD:-}" --query "select 1" > /dev/null 2>&1; then
+        clickhouse client --user "${CLICKHOUSE_USER:-default}" --password "${CLICKHOUSE_PASSWORD:-}" --query "system flush logs"
         READY=true
         break
     fi

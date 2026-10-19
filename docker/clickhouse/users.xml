@@ -174,6 +174,12 @@
             <profile>app</profile>
 
             <quota>default</quota>
+
+            <access_management>0</access_management>
+            <grants>
+                <query>GRANT ALL ON *.*</query>
+                <query>GRANT NAMED COLLECTION ON msk_cluster</query>
+            </grants>
         </app>
 
         <!-- Low-privilege reader baked into dictionary SOURCE(CLICKHOUSE(...)) clauses.

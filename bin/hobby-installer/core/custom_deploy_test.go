@@ -1,6 +1,68 @@
 package core
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestCustomDeploymentCredentials(t *testing.T) {
+	template, err := os.ReadFile("../../../.env.services")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile(".env.services", template, 0600); err != nil {
+		t.Fatal(err)
+	}
+	config := CustomDeployConfig{
+		PostgresUser: "posthog", PostgresPassword: strings.Repeat("a", 64),
+		ClickHouseAppPassword:    strings.Repeat("b", 64),
+		ClickHouseAPISecret:      strings.Repeat("c", 64),
+		ClickHouseReaderPassword: strings.Repeat("d", 64),
+		RedisPassword:            strings.Repeat("e", 64),
+		ObjectStoragePassword:    strings.Repeat("f", 64),
+	}
+	if err := writeCustomDeploymentFiles(config, "test-hash"); err != nil {
+		t.Fatal(err)
+	}
+	values := map[string]string{}
+	for _, name := range []string{".env", ".env.services.runtime"} {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0600 {
+			t.Fatalf("%s must be private", name)
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			key, value, ok := strings.Cut(line, "=")
+			if ok {
+				values[key] = strings.Trim(value, "'")
+			}
+		}
+	}
+	password := values["CLICKHOUSE_DEFAULT_PASSWORD"]
+	if len(password) != 64 || password == config.ClickHouseAppPassword {
+		t.Fatal("default must have a separate generated strong password")
+	}
+	if values["CLICKHOUSE_BILLING_USER"] != "app" || values["CLICKHOUSE_BILLING_PASSWORD"] != config.ClickHouseAppPassword {
+		t.Fatal("billing must use an account provisioned by this deployment")
+	}
+	for key, want := range map[string]string{
+		"CLICKHOUSE_APP_PASSWORD":         config.ClickHouseAppPassword,
+		"CLICKHOUSE_API_PASSWORD":         config.ClickHouseAPISecret,
+		"CLICKHOUSE_DICT_READER_PASSWORD": config.ClickHouseReaderPassword,
+	} {
+		if values[key] != want {
+			t.Fatalf("%s was not propagated", key)
+		}
+	}
+}
 
 func TestValidateDatabaseUsername(t *testing.T) {
 	tests := []struct {

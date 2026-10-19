@@ -191,6 +191,10 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 	if err != nil {
 		return err
 	}
+	defaultPassword, err := GenerateDeploymentPassword()
+	if err != nil {
+		return err
+	}
 	values := map[string]string{
 		"DOMAIN":                           config.Domain,
 		"SITE_URL":                         "https://" + config.Domain,
@@ -207,6 +211,7 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 		"SERVICE_ENV_FILE":                 ".env.services.runtime",
 		"POSTGRES_USER":                    config.PostgresUser,
 		"POSTGRES_PASSWORD":                config.PostgresPassword,
+		"CLICKHOUSE_DEFAULT_PASSWORD":      defaultPassword,
 		"CLICKHOUSE_API_PASSWORD":          config.ClickHouseAPISecret,
 		"CLICKHOUSE_APP_PASSWORD":          config.ClickHouseAppPassword,
 		"CLICKHOUSE_DICT_READER_PASSWORD":  config.ClickHouseReaderPassword,
@@ -266,6 +271,7 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 		"CLICKHOUSE_API_PASSWORD":          config.ClickHouseAPISecret,
 		"CLICKHOUSE_APP_PASSWORD":          config.ClickHouseAppPassword,
 		"CLICKHOUSE_DICT_READER_PASSWORD":  config.ClickHouseReaderPassword,
+		"CLICKHOUSE_BILLING_USER":          "app",
 		"CLICKHOUSE_BILLING_PASSWORD":      config.ClickHouseAppPassword,
 		"OBJECT_STORAGE_ACCESS_KEY_ID":     config.ObjectStorageUser,
 		"OBJECT_STORAGE_SECRET_ACCESS_KEY": config.ObjectStoragePassword,
