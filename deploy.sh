@@ -130,6 +130,10 @@ if [[ "$BUILD_LOCAL_IMAGES" != "1" ]]; then
   sudo -n docker pull "$APP_IMAGE"
   sudo -n docker pull "$NODE_IMAGE"
 fi
+# The feature-flags service also declares the upstream master image. Build it
+# from this checkout explicitly so an existing cached master image cannot run
+# against a different schema than the PostHog app image.
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build feature-flags
 mkdir -p share
 GEOIP_CONTAINER=$(sudo -n docker create "$APP_IMAGE")
 sudo -n docker cp "$GEOIP_CONTAINER:/code/share/GeoLite2-City.mmdb" share/GeoLite2-City.mmdb
@@ -148,6 +152,8 @@ sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-r
 python3 bin/scale_hobby_consumers.py --apply \
   --partitions "$INGESTION_TOPIC_PARTITIONS" \
   --consumers "$CLICKHOUSE_KAFKA_CONSUMERS" \
+  --env-file "$ENV_FILE" \
+  --compose-file "$COMPOSE_FILE" \
   --backup-dir "${INGESTION_BACKUP_DIR:-$PWD/share/ingestion-backups}"
 for _ in $(seq 1 90); do
   if curl -kfsS --resolve "$DOMAIN:443:127.0.0.1" --max-time 5 "https://$DOMAIN/_health" >/dev/null; then

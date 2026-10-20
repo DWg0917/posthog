@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import os
+import re
+import json
+import time
+import pathlib
 import argparse
 import datetime
-import json
-import pathlib
-import re
 import subprocess
-import time
 
 PAIRS = {
     "kafka_events_json": "events_json_mv",
@@ -13,14 +14,26 @@ PAIRS = {
 }
 
 
-def query(sql: str) -> str:
+def compose_exec_command(service: str, env_file: str, compose_file: str) -> list[str]:
+    return [
+        "sudo",
+        "-n",
+        "docker",
+        "compose",
+        "--env-file",
+        env_file,
+        "-f",
+        compose_file,
+        "exec",
+        "-T",
+        service,
+    ]
+
+
+def query(sql: str, env_file: str, compose_file: str) -> str:
     result = subprocess.run(
         [
-            "sudo",
-            "-n",
-            "docker",
-            "exec",
-            "posthog-clickhouse-1",
+            *compose_exec_command("clickhouse", env_file, compose_file),
             "clickhouse-client",
             "--query",
             sql,
@@ -48,17 +61,15 @@ def settings(ddl: str, consumers: int) -> str:
     return ddl
 
 
-def topic_partitions() -> dict[str, int]:
+def topic_partitions(env_file: str, compose_file: str) -> dict[str, int]:
     listing = subprocess.check_output(
         [
-            "sudo",
-            "-n",
-            "docker",
-            "exec",
-            "posthog-kafka-1",
+            *compose_exec_command("kafka", env_file, compose_file),
             "rpk",
             "topic",
             "list",
+            "--brokers",
+            "kafka:9092",
         ],
         text=True,
         timeout=30,
@@ -71,10 +82,14 @@ def topic_partitions() -> dict[str, int]:
 
 
 def ensure_topic_partitions(
-    topics: tuple[str, ...], consumers: int, apply: bool
+    topics: tuple[str, ...],
+    consumers: int,
+    apply: bool,
+    env_file: str,
+    compose_file: str,
 ) -> None:
     for _ in range(24):
-        partitions = topic_partitions()
+        partitions = topic_partitions(env_file, compose_file)
         if all(topic in partitions for topic in topics):
             break
         time.sleep(5)
@@ -91,17 +106,15 @@ def ensure_topic_partitions(
         if apply:
             subprocess.run(
                 [
-                    "sudo",
-                    "-n",
-                    "docker",
-                    "exec",
-                    "posthog-kafka-1",
+                    *compose_exec_command("kafka", env_file, compose_file),
                     "rpk",
                     "topic",
                     "add-partitions",
                     topic,
                     "--num",
                     str(additional),
+                    "--brokers",
+                    "kafka:9092",
                 ],
                 check=True,
                 timeout=60,
@@ -114,6 +127,11 @@ def main() -> None:
     parser.add_argument("--partitions", type=int, default=None)
     parser.add_argument("--consumers", type=int, default=8)
     parser.add_argument("--backup-dir", type=pathlib.Path, required=True)
+    parser.add_argument("--env-file", default=os.environ.get("ENV_FILE", ".env"))
+    parser.add_argument(
+        "--compose-file",
+        default=os.environ.get("COMPOSE_FILE", "docker-compose.hobby.yml"),
+    )
     args = parser.parse_args()
     partitions = args.partitions if args.partitions is not None else args.consumers
     if not 1 <= partitions <= 1024:
@@ -123,23 +141,28 @@ def main() -> None:
     if args.consumers > partitions:
         raise SystemExit("Consumer count cannot exceed the topic partition count.")
     required_topics = ("events_plugin_ingestion", "clickhouse_events_json")
-    ensure_topic_partitions(required_topics, partitions, args.apply)
+    ensure_topic_partitions(
+        required_topics,
+        partitions,
+        args.apply,
+        args.env_file,
+        args.compose_file,
+    )
     rows = [
         json.loads(row)
         for row in query(
             "SELECT name, engine, create_table_query FROM system.tables WHERE database='posthog' "
             "AND name IN ('kafka_events_json','kafka_events_json_native_json','events_json_mv','events_json_table_mv') "
-            "FORMAT JSONEachRow"
+            "FORMAT JSONEachRow",
+            args.env_file,
+            args.compose_file,
         ).splitlines()
     ]
     objects = {row["name"]: row for row in rows}
     if len(objects) != 4:
         raise SystemExit("Expected both Kafka tables and both materialized views.")
     for table, view in PAIRS.items():
-        if (
-            objects[table]["engine"] != "Kafka"
-            or objects[view]["engine"] != "MaterializedView"
-        ):
+        if objects[table]["engine"] != "Kafka" or objects[view]["engine"] != "MaterializedView":
             raise SystemExit("Unexpected table engine.")
         ddl = objects[view]["create_table_query"]
         if not re.search(r"\bTO posthog\.writable_events(?:_json)?\s", ddl):
@@ -148,9 +171,7 @@ def main() -> None:
             raise SystemExit("Unexpected materialized view source.")
     args.backup_dir.mkdir(parents=True, exist_ok=True)
     backup = args.backup_dir / (
-        "engine-ddl-"
-        + datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%f")
-        + ".json"
+        "engine-ddl-" + datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S%f") + ".json"
     )
     backup.write_text(json.dumps(objects, indent=2))
     backup.chmod(0o600)
@@ -175,21 +196,21 @@ def main() -> None:
         table_removed = False
         new_created = False
         try:
-            query(f"DROP TABLE IF EXISTS posthog.{view} SYNC")
+            query(f"DROP TABLE IF EXISTS posthog.{view} SYNC", args.env_file, args.compose_file)
             view_removed = True
-            query(f"DROP TABLE IF EXISTS posthog.{table} SYNC")
+            query(f"DROP TABLE IF EXISTS posthog.{table} SYNC", args.env_file, args.compose_file)
             table_removed = True
-            query(new_table)
+            query(new_table, args.env_file, args.compose_file)
             new_created = True
-            query(old_view)
+            query(old_view, args.env_file, args.compose_file)
             view_removed = False
         except BaseException:
             if new_created:
-                query(f"DROP TABLE IF EXISTS posthog.{table} SYNC")
+                query(f"DROP TABLE IF EXISTS posthog.{table} SYNC", args.env_file, args.compose_file)
             if table_removed:
-                query(old_table)
+                query(old_table, args.env_file, args.compose_file)
             if view_removed:
-                query(old_view)
+                query(old_view, args.env_file, args.compose_file)
             print(table, "restored original definitions", flush=True)
             raise
         print(table, "configured; materialized view restored", flush=True)
