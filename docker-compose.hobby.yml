@@ -705,6 +705,9 @@ services:
             file: docker-compose.base.yml
             service: feature-flags
         logging: *default-logging
+        environment:
+            # Keep encrypted remote-config flag payloads decryptable by the Rust service.
+            SECRET_KEY: $POSTHOG_SECRET
         depends_on:
             - db
             - redis7
