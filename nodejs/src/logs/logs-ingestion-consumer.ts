@@ -385,6 +385,7 @@ export class LogsIngestionConsumer {
                       url: mergedConfig.LOGS_REDIS_HOST,
                       options: {
                           port: mergedConfig.LOGS_REDIS_PORT,
+                          password: mergedConfig.LOGS_REDIS_PASSWORD || undefined,
                           tls: mergedConfig.LOGS_REDIS_TLS ? {} : undefined,
                       },
                       name: 'logs-redis',
