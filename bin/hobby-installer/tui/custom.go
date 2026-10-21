@@ -64,6 +64,7 @@ func newCustomModel() (customModel, error) {
 		{key: "ai_api_key", label: "AI API key", help: "Stored in the private .env file", secret: true, optional: true},
 		{key: "app_image", label: "PostHog app image", help: "Docker Hub image including tag", value: "diweigao/my-posthog-single:app-ec70230fe1"},
 		{key: "node_image", label: "PostHog node image", help: "Docker Hub image including tag", value: "diweigao/my-posthog-single:node-ec70230fe1"},
+		{key: "feature_flags_image", label: "Feature Flags image", help: "Docker Hub image built for the app database schema, including tag", value: "diweigao/my-posthog-single:feature-flags-70a28660e31"},
 	}
 	input := textinput.New()
 	input.CharLimit = 512
@@ -244,13 +245,13 @@ func customConfigFromFields(fields []customField) (core.CustomDeployConfig, erro
 		RedisPassword: values["redis_password"], ObjectStorageUser: values["object_storage_user"], ObjectStoragePassword: values["object_storage_password"],
 		CaddyUsername: values["caddy_username"], CaddyPassword: values["caddy_password"],
 		AIProvider: values["ai_provider"], AIModel: values["ai_model"], AIBaseURL: values["ai_base_url"], AIAPIKey: values["ai_api_key"],
-		AppImage: values["app_image"], NodeImage: values["node_image"],
+		AppImage: values["app_image"], NodeImage: values["node_image"], FeatureFlagsImage: values["feature_flags_image"],
 	}
 	if config.AIProvider != "" && config.AIProvider != "none" && (config.AIModel == "" || config.AIAPIKey == "") {
 		return config, fmt.Errorf("AI provider requires a model and API key")
 	}
-	if !strings.Contains(config.AppImage, ":") || !strings.Contains(config.NodeImage, ":") {
-		return config, fmt.Errorf("both image references must include a tag")
+	if !strings.Contains(config.AppImage, ":") || !strings.Contains(config.NodeImage, ":") || !strings.Contains(config.FeatureFlagsImage, ":") {
+		return config, fmt.Errorf("all three image references must include a tag")
 	}
 	return config, nil
 }

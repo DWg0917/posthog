@@ -188,7 +188,7 @@ services:
         extends:
             file: docker-compose.base.yml
             service: web
-        command: "python -m granian --interface asgi posthog.asgi:application --host 0.0.0.0 --log-level info --workers 1 --workers-kill-timeout 5"
+        command: 'python -m granian --interface asgi posthog.asgi:application --host 0.0.0.0 --log-level info --workers 1 --workers-kill-timeout 5'
         logging: *default-logging
         volumes:
             - ./compose:/compose
@@ -297,7 +297,7 @@ services:
             BEHAVIORAL_COHORTS_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             OTEL_EXPORTER_OTLP_ENDPOINT: ''
             PERSONHOG_ADDR: personhog-router:50052
-            PERSONHOG_ENABLED: "true"
+            PERSONHOG_ENABLED: 'true'
         volumes:
             - ./share:/share
         depends_on:
@@ -393,14 +393,14 @@ services:
             CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
             PERSONHOG_ADDR: personhog-router:50052
-            PERSONHOG_ENABLED: "true"
+            PERSONHOG_ENABLED: 'true'
             ERROR_TRACKING_CYMBAL_BASE_URL: 'http://cymbal:3302'
         depends_on:
-          - db
-          - redis7
-          - kafka
+            - db
+            - redis7
+            - kafka
         volumes:
-          - "./share:/code/nodejs/share:ro"
+            - './share:/code/nodejs/share:ro'
 
     ingestion-logs:
         extends:
@@ -700,8 +700,7 @@ services:
             - personhog-replica
 
     feature-flags:
-        build:
-            context: ./rust
+        image: ${POSTHOG_FEATURE_FLAGS_IMAGE:?Set POSTHOG_FEATURE_FLAGS_IMAGE to a schema-compatible image}
         extends:
             file: docker-compose.base.yml
             service: feature-flags

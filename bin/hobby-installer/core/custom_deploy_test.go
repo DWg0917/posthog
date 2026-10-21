@@ -16,7 +16,8 @@ func TestCustomDeploymentCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := CustomDeployConfig{
-		PostgresUser: "posthog", PostgresPassword: strings.Repeat("a", 64),
+		FeatureFlagsImage: "example/posthog:feature-flags-compatible",
+		PostgresUser:      "posthog", PostgresPassword: strings.Repeat("a", 64),
 		ClickHouseAppPassword:    strings.Repeat("b", 64),
 		ClickHouseAPISecret:      strings.Repeat("c", 64),
 		ClickHouseReaderPassword: strings.Repeat("d", 64),
@@ -54,6 +55,7 @@ func TestCustomDeploymentCredentials(t *testing.T) {
 		t.Fatal("billing must use an account provisioned by this deployment")
 	}
 	for key, want := range map[string]string{
+		"POSTHOG_FEATURE_FLAGS_IMAGE":     config.FeatureFlagsImage,
 		"CLICKHOUSE_APP_PASSWORD":         config.ClickHouseAppPassword,
 		"CLICKHOUSE_API_PASSWORD":         config.ClickHouseAPISecret,
 		"CLICKHOUSE_DICT_READER_PASSWORD": config.ClickHouseReaderPassword,

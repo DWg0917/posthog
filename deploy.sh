@@ -130,10 +130,7 @@ if [[ "$BUILD_LOCAL_IMAGES" != "1" ]]; then
   sudo -n docker pull "$APP_IMAGE"
   sudo -n docker pull "$NODE_IMAGE"
 fi
-# The feature-flags service also declares the upstream master image. Build it
-# from this checkout explicitly so an existing cached master image cannot run
-# against a different schema than the PostHog app image.
-sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build feature-flags
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull feature-flags
 mkdir -p share
 GEOIP_CONTAINER=$(sudo -n docker create "$APP_IMAGE")
 sudo -n docker cp "$GEOIP_CONTAINER:/code/share/GeoLite2-City.mmdb" share/GeoLite2-City.mmdb

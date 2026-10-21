@@ -28,7 +28,7 @@ type CustomDeployConfig struct {
 	RedisPassword, ObjectStorageUser, ObjectStoragePassword              string
 	CaddyUsername, CaddyPassword                                         string
 	AIProvider, AIModel, AIBaseURL, AIAPIKey                             string
-	AppImage, NodeImage                                                  string
+	AppImage, NodeImage, FeatureFlagsImage                               string
 }
 
 func GenerateDeploymentPassword() (string, error) {
@@ -206,6 +206,7 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 		"POSTHOG_NODE_TAG":                 imageTag(config.NodeImage),
 		"POSTHOG_APP_IMAGE":                config.AppImage,
 		"POSTHOG_NODE_IMAGE":               config.NodeImage,
+		"POSTHOG_FEATURE_FLAGS_IMAGE":      config.FeatureFlagsImage,
 		"REGISTRY_URL":                     "diweigao/my-posthog-single",
 		"BUILD_LOCAL_IMAGES":               "0",
 		"SERVICE_ENV_FILE":                 ".env.services.runtime",
