@@ -592,7 +592,9 @@ services:
             CLICKHOUSE_VERIFY: 'false'
             COOKIELESS_REDIS_HOST: redis7
             COOKIELESS_REDIS_PORT: 6379
+            COOKIELESS_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             CDP_REDIS_HOST: redis7
+            CDP_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             ENCRYPTION_SALT_KEYS: '00beef0000beef0000beef0000beef00'
             # Combined mode consumes the events_plugin_ingestion_ai lane, where capture diverts
             # $ai_* events, so it owns AI blob offload. Without a bucket, buildAiBlobStore returns
@@ -627,6 +629,7 @@ services:
             CLICKHOUSE_VERIFY: 'false'
             SESSION_RECORDING_API_REDIS_HOST: redis7
             SESSION_RECORDING_API_REDIS_PORT: 6379
+            SESSION_RECORDING_API_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
 
     ingestion-error-tracking:
         command: node nodejs/dist/index.js
@@ -637,6 +640,7 @@ services:
             KAFKA_HOSTS: 'kafka:9092'
             REDIS_URL: ${REDIS_URL:-redis://redis7:6379/}
             CDP_REDIS_HOST: redis7
+            CDP_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             ENCRYPTION_SALT_KEYS: '00beef0000beef0000beef0000beef00'
 
     ingestion-logs:
@@ -648,9 +652,11 @@ services:
             KAFKA_HOSTS: 'kafka:9092'
             REDIS_URL: ${REDIS_URL:-redis://redis7:6379/}
             LOGS_REDIS_HOST: redis7
+            LOGS_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             # Hog log transformations: function health state lives on CDP redis, and
             # encrypted function inputs need the salt keys (same as error tracking above)
             CDP_REDIS_HOST: redis7
+            CDP_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             ENCRYPTION_SALT_KEYS: '00beef0000beef0000beef0000beef00'
 
     ingestion-traces:
@@ -662,6 +668,7 @@ services:
             KAFKA_HOSTS: 'kafka:9092'
             REDIS_URL: ${REDIS_URL:-redis://redis7:6379/}
             TRACES_REDIS_HOST: redis7
+            TRACES_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
 
     livestream:
         image: 'ghcr.io/posthog/posthog/livestream:master'

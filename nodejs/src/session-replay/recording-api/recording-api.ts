@@ -87,7 +87,10 @@ export class RecordingApi {
         this.redisPool = createRedisPoolFromConfig({
             connection: {
                 url: this.config.SESSION_RECORDING_API_REDIS_HOST,
-                options: { port: this.config.SESSION_RECORDING_API_REDIS_PORT },
+                options: {
+                    port: this.config.SESSION_RECORDING_API_REDIS_PORT,
+                    password: this.config.SESSION_RECORDING_API_REDIS_PASSWORD,
+                },
                 name: 'recording-api',
             },
             poolMinSize: this.config.REDIS_POOL_MIN_SIZE,

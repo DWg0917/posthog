@@ -55,6 +55,7 @@ export function createPosthogRedisConnectionConfig(
 export type CookielessRedisConfig = {
     COOKIELESS_REDIS_HOST: string
     COOKIELESS_REDIS_PORT: number
+    COOKIELESS_REDIS_PASSWORD: string
 }
 
 /** $feature_flag_called dedup Redis connection params — these are ingestion-specific config keys. */
@@ -102,7 +103,7 @@ export function createCookielessRedisConnectionConfig(
     if (config.COOKIELESS_REDIS_HOST) {
         return {
             url: config.COOKIELESS_REDIS_HOST,
-            options: { port: config.COOKIELESS_REDIS_PORT ?? 6379 },
+            options: { port: config.COOKIELESS_REDIS_PORT ?? 6379, password: config.COOKIELESS_REDIS_PASSWORD },
             name: 'cookieless-redis',
         }
     }

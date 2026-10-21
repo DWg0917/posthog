@@ -111,7 +111,7 @@ export type CookielessManagerConfig = Pick<
  * of redeclaring the cookieless keys inline.
  */
 export type CookielessServerConfig = CookielessManagerConfig &
-    Pick<IngestionConsumerConfig, 'COOKIELESS_REDIS_HOST' | 'COOKIELESS_REDIS_PORT'>
+    Pick<IngestionConsumerConfig, 'COOKIELESS_REDIS_HOST' | 'COOKIELESS_REDIS_PORT' | 'COOKIELESS_REDIS_PASSWORD'>
 
 export class CookielessManager {
     public readonly redisHelpers: RedisHelpers
