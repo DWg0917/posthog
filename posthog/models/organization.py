@@ -18,7 +18,7 @@ import structlog
 import dateutil.parser
 from rest_framework import exceptions
 
-from posthog.cloud_utils import is_cloud
+from posthog.cloud_utils import is_cloud, is_hobby
 from posthog.constants import INVITE_DAYS_VALIDITY, MAX_SLUG_LENGTH, AvailableFeature
 from posthog.dataclasses import frozen
 from posthog.models.activity_logging.model_activity import ModelActivityMixin
@@ -383,7 +383,7 @@ class Organization(ModelActivityMixin, UUIDTModel):
 
     def update_available_product_features(self) -> list[ProductFeature]:
         """Updates field `available_product_features`. Does not `save()`."""
-        if is_cloud() or self.usage:
+        if not is_hobby() and (is_cloud() or self.usage):
             # Since billing V2 we just use the field which is updated when the billing service is called
             return self.available_product_features or []
 
@@ -410,6 +410,20 @@ class Organization(ModelActivityMixin, UUIDTModel):
                 self.available_product_features = [
                     {"key": feature, "name": " ".join(feature.split(" ")).capitalize()} for feature in features
                 ]
+
+        # Self-hosted deployments do not use cloud billing entitlements. Keep the
+        # selected enterprise settings features available across license syncs.
+        if is_hobby() or not is_cloud():
+            self_hosted_features = [
+                (feature, feature.value.replace("_", " ").title())
+                for feature in AvailableFeature
+            ]
+            existing_feature_keys = {feature.get("key") for feature in self.available_product_features}
+            self.available_product_features.extend(
+                {"key": feature.value, "name": name}
+                for feature, name in self_hosted_features
+                if feature.value not in existing_feature_keys
+            )
 
         return self.available_product_features
 

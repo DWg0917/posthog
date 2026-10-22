@@ -24,7 +24,7 @@ from products.product_analytics.backend.facade.models import Insight
 from ee.hogai.context.insight.query_executor import AssistantQueryExecutor
 from ee.hogai.core.node import AssistantNode
 from ee.hogai.core.shared_prompts import HYPERLINK_USAGE_INSTRUCTIONS
-from ee.hogai.llm import MaxChatOpenAI
+from ee.hogai.llm import get_configured_chat_model
 from ee.hogai.utils.helpers import build_insight_url
 from ee.hogai.utils.query import validate_assistant_query
 from ee.hogai.utils.types import AssistantState, PartialAssistantState
@@ -863,7 +863,7 @@ class InsightSearchNode(AssistantNode):
 
     @property
     def _model(self):
-        return MaxChatOpenAI(
+        return get_configured_chat_model(
             model="gpt-4.1-mini",
             temperature=0.7,
             max_completion_tokens=1000,

@@ -1,0 +1,76 @@
+<clickhouse>
+    <remote_servers>
+        <posthog>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </posthog>
+        <posthog_single_shard>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </posthog_single_shard>
+        <posthog_migrations>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </posthog_migrations>
+        <posthog_writable>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </posthog_writable>
+        <posthog_primary_replica>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </posthog_primary_replica>
+        <ai_events>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </ai_events>
+        <aux>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </aux>
+        <ops>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </ops>
+        <sessions>
+            <shard>
+                <replica>
+                    <user>app</user>
+                    <password from_env="CLICKHOUSE_APP_PASSWORD" />
+                </replica>
+            </shard>
+        </sessions>
+    </remote_servers>
+</clickhouse>

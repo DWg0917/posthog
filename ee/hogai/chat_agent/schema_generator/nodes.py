@@ -14,7 +14,7 @@ from posthog.schema import ArtifactContentType, ArtifactSource, VisualizationArt
 from posthog.sync import database_sync_to_async
 
 from ee.hogai.core.node import AssistantNode
-from ee.hogai.llm import MaxChatOpenAI
+from ee.hogai.llm import get_configured_chat_model
 from ee.hogai.utils.types import AssistantState, IntermediateStep, PartialAssistantState
 
 from .parsers import PydanticOutputParserException, parse_pydantic_structured_output
@@ -45,7 +45,7 @@ class SchemaGeneratorNode(AssistantNode, Generic[Q]):
 
     @property
     def _model(self):
-        return MaxChatOpenAI(
+        return get_configured_chat_model(
             model="gpt-5.2",
             temperature=0.3,
             disable_streaming=True,

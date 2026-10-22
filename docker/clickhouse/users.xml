@@ -135,7 +135,8 @@
                  All results of DNS requests are cached till server restart.
             -->
             <networks>
-                <ip>::/0</ip>
+                <ip>::1</ip>
+                <ip>127.0.0.1</ip>
             </networks>
 
             <!-- Settings profile for user. -->
@@ -145,14 +146,14 @@
             <quota>default</quota>
 
             <!-- User can create other users and grant rights to them. -->
-            <access_management>1</access_management>
+            <access_management>0</access_management>
             <named_collection_control>1</named_collection_control>
             <show_named_collections>1</show_named_collections>
             <show_named_collections_secrets>1</show_named_collections_secrets>
         </default>
 
         <api>
-            <password>apipass</password>
+            <password from_env="CLICKHOUSE_API_PASSWORD" />
 
             <networks>
                 <ip>::/0</ip>
@@ -164,7 +165,7 @@
         </api>
 
         <app>
-            <password>apppass</password>
+            <password from_env="CLICKHOUSE_APP_PASSWORD" />
 
             <networks>
                 <ip>::/0</ip>
@@ -173,13 +174,19 @@
             <profile>app</profile>
 
             <quota>default</quota>
+
+            <access_management>0</access_management>
+            <grants>
+                <query>GRANT ALL ON *.*</query>
+                <query>GRANT NAMED COLLECTION ON msk_cluster</query>
+            </grants>
         </app>
 
         <!-- Low-privilege reader baked into dictionary SOURCE(CLICKHOUSE(...)) clauses.
              Mirrors prod's dict_reader: read-only, database-wide SELECT (not table-enumerated,
              so new dictionary source tables are covered without editing this file). -->
         <dict_reader>
-            <password>dictreaderpass</password>
+            <password from_env="CLICKHOUSE_DICT_READER_PASSWORD" />
 
             <networks>
                 <ip>::/0</ip>

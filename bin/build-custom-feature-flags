@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+IMAGE=${1:?Usage: bin/build-custom-feature-flags IMAGE [GIT_REF]}
+REVISION=$(git rev-parse "${2:-HEAD}^{commit}")
+CONTEXT=$(mktemp -d)
+trap 'rm -rf "$CONTEXT"' EXIT
+# Match the shared Rust CI build layout using only committed sources.
+git archive "$REVISION" rust proto | tar -x -C "$CONTEXT"
+cp -R "$CONTEXT/proto" "$CONTEXT/rust/proto"
+docker buildx build --platform linux/amd64 --progress=plain --push \
+    --build-arg BIN=feature-flags \
+    --label "org.opencontainers.image.revision=$REVISION" \
+    -t "$IMAGE" -f "$CONTEXT/rust/Dockerfile" "$CONTEXT/rust"

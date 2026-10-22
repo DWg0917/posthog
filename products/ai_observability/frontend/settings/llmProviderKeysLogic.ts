@@ -16,6 +16,9 @@ export type LLMProvider =
     | 'together_ai'
     | 'minimax'
     | 'zeabur'
+  | 'glm'
+  | 'mimo'
+  | 'qwen'
 
 /** Default Azure OpenAI API version — keep in sync with backend DEFAULT_API_VERSION. */
 export const DEFAULT_AZURE_API_VERSION = '2024-10-21'
@@ -30,6 +33,9 @@ export const LLM_PROVIDER_LABELS: Record<LLMProvider, string> = {
     together_ai: 'Together AI',
     minimax: 'MiniMax',
     zeabur: 'Zeabur AI Hub',
+  glm: 'GLM',
+  mimo: 'Mimo',
+  qwen: 'Qwen',
 }
 
 const LLM_PROVIDERS = new Set<string>(Object.keys(LLM_PROVIDER_LABELS))

@@ -39,6 +39,7 @@ export type SessionReplayProducerName =
 export type SessionRecordingApiConfig = {
     SESSION_RECORDING_API_REDIS_HOST: string
     SESSION_RECORDING_API_REDIS_PORT: number
+    SESSION_RECORDING_API_REDIS_PASSWORD: string
     SESSION_RECORDING_KMS_ENDPOINT: string | undefined
     SESSION_RECORDING_DYNAMODB_ENDPOINT: string | undefined
     CLICKHOUSE_HOST: string
@@ -106,6 +107,7 @@ export function getDefaultSessionRecordingApiConfig(): SessionRecordingApiConfig
         ...getDefaultClickhouseConfig(),
         SESSION_RECORDING_API_REDIS_HOST: '127.0.0.1',
         SESSION_RECORDING_API_REDIS_PORT: 6379,
+        SESSION_RECORDING_API_REDIS_PASSWORD: '',
         SESSION_RECORDING_KMS_ENDPOINT: undefined,
         SESSION_RECORDING_DYNAMODB_ENDPOINT: undefined,
     }

@@ -3,10 +3,8 @@ import { useActions, useValues } from 'kea'
 import { IconHome, IconInfo, IconPlus } from '@posthog/icons'
 import { LemonButton, LemonDropdown, LemonSelect, LemonTable, Tooltip } from '@posthog/lemon-ui'
 
-import { PayGateMini } from 'lib/components/PayGateMini/PayGateMini'
 import { getAccessControlTooltip } from 'lib/utils/accessControlUtils'
 
-import { AccessControlLevel, AvailableFeature } from '~/types'
 
 import { accessControlsLogic } from './accessControlsLogic'
 import { getLevelOptionsForResource } from './helpers'
@@ -26,7 +24,6 @@ export function AccessControlDefaultSettings({ projectId }: { projectId: string 
     } = defaults ?? {}
 
     return (
-        <PayGateMini feature={AvailableFeature.ACCESS_CONTROL} featureDetail="resource-access-control-default-settings">
             <div className="space-y-4">
                 <div className="p-3 bg-surface-primary rounded border border-border flex flex-row justify-between items-center">
                     <div>
@@ -193,6 +190,5 @@ export function AccessControlDefaultSettings({ projectId }: { projectId: string 
                     </>
                 )}
             </div>
-        </PayGateMini>
     )
 }

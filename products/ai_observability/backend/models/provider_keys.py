@@ -22,6 +22,9 @@ class LLMProvider(models.TextChoices):
     TOGETHER_AI = "together_ai", "Together AI"
     MINIMAX = "minimax", "MiniMax"
     ZEABUR = "zeabur", "Zeabur AI Hub"
+    GLM = "glm", "GLM"
+    MIMO = "mimo", "Mimo"
+    QWEN = "qwen", "Qwen"
 
 
 def llm_provider_choices() -> list[tuple[str, str | Promise]]:

@@ -1,4 +1,4 @@
-from typing import TypeIs
+from typing_extensions import TypeIs
 
 from rest_framework.exceptions import ValidationError
 

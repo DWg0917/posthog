@@ -886,7 +886,7 @@ class ClickHouseClient:
         query_parameters=None,
         query_id: str | None = None,
         line_separator=b"\n",
-    ) -> typing.AsyncGenerator[dict[typing.Any, typing.Any]]:
+    ) -> typing.AsyncGenerator[dict[typing.Any, typing.Any], None]:
         """Execute the given query in ClickHouse and stream back the response as one JSON per line.
 
         This method makes sense when running with FORMAT JSONEachRow, although we currently do not enforce this.
@@ -909,7 +909,7 @@ class ClickHouseClient:
         *data,
         query_parameters=None,
         query_id: str | None = None,
-    ) -> typing.Generator[pa.RecordBatch]:
+    ) -> typing.Generator[pa.RecordBatch, None, None]:
         """Execute the given query in ClickHouse and stream back the response as Arrow record batches.
 
         This method makes sense when running with FORMAT ArrowStreaming, although we currently do not enforce this.
@@ -926,7 +926,7 @@ class ClickHouseClient:
         query_parameters=None,
         query_id: str | None = None,
         on_schema: collections.abc.Callable[[pa.Schema], None] | None = None,
-    ) -> typing.AsyncGenerator[pa.RecordBatch]:
+    ) -> typing.AsyncGenerator[pa.RecordBatch, None]:
         """Execute the given query in ClickHouse and stream back the response as Arrow record batches.
 
         This method makes sense when running with FORMAT ArrowStream, although we currently do not enforce this.

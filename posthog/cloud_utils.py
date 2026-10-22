@@ -49,6 +49,8 @@ def is_ci() -> bool:
 def get_cached_instance_license() -> Optional["License"]:
     """Returns the first valid license and caches the value for the lifetime of the instance, as it is not expected to change.
     If there is no valid license, it returns None.
+    
+    For Hobby deployments (self-hosted), automatically provisions an enterprise license with all features unlocked.
     """
     global instance_license_cached
     global is_instance_licensed_cached
@@ -72,13 +74,15 @@ def get_cached_instance_license() -> Optional["License"]:
     # TRICKY - The license table may not exist if a migration is running
     license = License.objects.first_valid()
 
-    # No license found locally, create one for dev mode
-    if not license and is_dev_mode():
+    # No license found locally, create one for dev mode or hobby deployments
+    if not license and (is_dev_mode() or is_hobby()):
+        # Use a consistent UUID for hobby/dev instances
         dev_uuid = "69004a5f-a7da-499a-a63a-338f996b6f7a"
         license = License.objects.create(
             key=f"{dev_uuid}::{settings.LICENSE_SECRET_KEY}",
-            plan="enterprise",
-            valid_until=timezone.now() + timedelta(weeks=52),
+            plan="enterprise",  # Grant enterprise features for hobby/dev
+            valid_until=timezone.now() + timedelta(weeks=52 * 100),  # Long validity
+            max_users=None,  # Unlimited users
         )
 
     if license:

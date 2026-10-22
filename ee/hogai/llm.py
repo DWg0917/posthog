@@ -19,7 +19,7 @@ from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.runnables import ensure_config
 from langchain_openai import ChatOpenAI
 from prometheus_client import Counter
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 from posthog.models import Team, User
 from posthog.settings import CLOUD_DEPLOYMENT
@@ -87,12 +87,31 @@ class MaxChatMixin(BaseModel):
     These will be merged with the standard properties like $ai_billable and team_id.
     """
     posthog_provider: ClassVar[str]
+    bypass_proxy: bool = False
 
     def model_post_init(self, __context: Any) -> None:
         if self.max_retries is None:
             self.max_retries = 3
         if self.stream_usage is None:
             self.stream_usage = True
+
+    def get_num_tokens_from_messages(self, messages: list[BaseMessage], tools=None, **kwargs: Any) -> int:
+        # OpenAI-compatible providers often use model names unknown to tiktoken.
+        # Use a stable OpenAI encoding as a conservative fallback for context budgeting.
+        kwargs.pop('thinking', None)
+        if not isinstance(self, ChatOpenAI):
+            return super().get_num_tokens_from_messages(messages, **kwargs)
+        try:
+            return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
+        except NotImplementedError as error:
+            if 'get_num_tokens_from_messages() is not presently implemented' not in str(error):
+                raise
+            original = getattr(self, 'tiktoken_model_name', None)
+            try:
+                self.tiktoken_model_name = 'gpt-4o'
+                return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
+            finally:
+                self.tiktoken_model_name = original
 
     def _get_project_org_user_variables(self) -> dict[str, Any]:
         """Note: this function may perform Postgres queries on `self._team`, `self._team.organization`, and `self._user`."""
@@ -197,8 +216,17 @@ class MaxChatOpenAI(MaxChatMixin, ChatOpenAI):
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
+        # Use the configured MiMo OpenAI-compatible endpoint for self-hosted AI.
+        if getattr(settings, "MIMO_API_KEY", ""):
+            self.openai_api_base = settings.MIMO_BASE_URL
+            self.openai_api_key = SecretStr(settings.MIMO_API_KEY)
+            self.model_name = settings.MIMO_SUPPORTED_MODELS[0]
         if settings.IN_EVAL_TESTING and not self.service_tier and self.model_name in OPENAI_FLEX_MODELS:
             self.service_tier = "flex"  # 50% cheaper than default tier, but slower
+
+    def get_num_tokens_from_messages(self, messages, tools=None, **kwargs):
+        kwargs.pop("thinking", None)
+        return super().get_num_tokens_from_messages(messages, tools=tools, **kwargs)
 
     def _enrich_responses_api_model_kwargs(self, project_org_user_variables: dict[str, Any]) -> None:
         """Mutate the provided model_kwargs dict in-place, ensuring the project/org/user context is present.
@@ -330,3 +358,87 @@ class MaxChatAnthropic(MaxChatMixin, ChatAnthropic):
         kwargs = self._with_posthog_properties(kwargs)
 
         return await super().agenerate(messages, *args, **kwargs)
+
+
+# Chinese LLM Providers Support
+class MaxChatGLM(MaxChatMixin, ChatOpenAI):
+    """ChatGLM (智谱AI) support via OpenAI-compatible API.
+    
+    GLM models are accessible through an OpenAI-compatible endpoint at https://open.bigmodel.cn/api/paas/v4
+    """
+    
+    posthog_provider: ClassVar[str] = "glm"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the GLM endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.GLM_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = SecretStr(settings.GLM_API_KEY)
+
+
+class MaxChatQwen(MaxChatMixin, ChatOpenAI):
+    """通义千问 (Alibaba Qwen) support via OpenAI-compatible API.
+    
+    Qwen models are accessible through DashScope's OpenAI-compatible endpoint.
+    """
+    
+    posthog_provider: ClassVar[str] = "qwen"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the Qwen endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.QWEN_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = settings.QWEN_API_KEY
+
+
+class MaxChatMiMo(MaxChatMixin, ChatOpenAI):
+    """小米 MiMo (Xiaomi) support via OpenAI-compatible API.
+    """
+    
+    posthog_provider: ClassVar[str] = "mimo"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Ensure we're using the MiMo endpoint
+        if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
+            self.openai_api_base = settings.MIMO_BASE_URL
+        if not self.openai_api_key:
+            self.openai_api_key = SecretStr(settings.MIMO_API_KEY)
+
+
+class MaxChatCustomLLM(MaxChatMixin, ChatOpenAI):
+    """Custom LLM provider support via OpenAI-compatible API.
+    
+    This allows any OpenAI-compatible LLM to be used with PostHog AI.
+    """
+    
+    posthog_provider: ClassVar[str] = "custom"
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        # Use custom endpoint if configured
+        if settings.CUSTOM_LLM_BASE_URL:
+            self.openai_api_base = settings.CUSTOM_LLM_BASE_URL
+        if settings.CUSTOM_LLM_API_KEY:
+            self.openai_api_key = SecretStr(settings.CUSTOM_LLM_API_KEY)
+
+
+
+def get_configured_chat_model(*, model: str, **kwargs: Any):
+    configured_provider = (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+    provider_kwargs = dict(kwargs)
+    if configured_provider in {"glm", "zhipu", "zhipuai", "mimo", "xiaomi", "custom"}:
+        for unsupported in ("output_version", "use_responses_api", "reasoning"):
+            provider_kwargs.pop(unsupported, None)
+    if configured_provider in {"glm", "zhipu", "zhipuai"}:
+        return MaxChatGLM(model=getattr(settings, "AI_MODEL", "") or model, **provider_kwargs)
+    if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
+        return MaxChatOpenAI(model=settings.MIMO_SUPPORTED_MODELS[0], **provider_kwargs)
+    if configured_provider == "custom" or (not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL):
+        custom_models = [item.strip() for item in settings.CUSTOM_LLM_MODELS.split(",") if item.strip()]
+        return MaxChatCustomLLM(model=custom_models[0] if custom_models else model, **provider_kwargs)
+    return MaxChatOpenAI(model=model, **kwargs)

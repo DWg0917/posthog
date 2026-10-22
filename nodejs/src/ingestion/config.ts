@@ -292,6 +292,7 @@ export type IngestionConsumerConfig = {
     COOKIELESS_IDENTIFIES_TTL_SECONDS: number
     COOKIELESS_REDIS_HOST: string
     COOKIELESS_REDIS_PORT: number
+    COOKIELESS_REDIS_PASSWORD: string
 
     // Property definitions
     PROPERTY_DEFS_CONSUMER_GROUP_ID: string
@@ -457,6 +458,7 @@ export function getDefaultIngestionConsumerConfig(): IngestionConsumerConfig {
         COOKIELESS_IDENTIFIES_TTL_SECONDS: (72 + 12 + 14 + 24) * 60 * 60,
         COOKIELESS_REDIS_HOST: '',
         COOKIELESS_REDIS_PORT: 6379,
+        COOKIELESS_REDIS_PASSWORD: '',
 
         // Property definitions
         PROPERTY_DEFS_CONSUMER_GROUP_ID: 'property-defs-consumer',

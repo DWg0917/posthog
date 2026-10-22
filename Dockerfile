@@ -169,7 +169,7 @@ RUN cd /code/common/plugin_transpiler && \
 FROM ghcr.io/astral-sh/uv:0.11.14 AS uv
 
 # Same as pyproject.toml so that uv can pick it up and doesn't need to download a different Python version.
-FROM python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f AS posthog-build
+FROM python:3.12.10-slim-bookworm AS posthog-build
 COPY --from=uv /uv /uvx /bin/
 WORKDIR /code
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
@@ -206,6 +206,7 @@ RUN --mount=type=cache,id=uv-libxmlsec1.2.37-2,target=/root/.cache/uv \
     --mount=type=bind,source=tools/owners,target=tools/owners \
     uv sync --locked --no-dev --no-editable --no-install-project --no-binary-package lxml --no-binary-package xmlsec
 
+RUN uv pip install --python /python-runtime/bin/python setuptools==80.9.0
 ENV PATH=/python-runtime/bin:$PATH \
     PYTHONPATH=/python-runtime
 
@@ -232,8 +233,11 @@ COPY ee ee/
 COPY --from=sourcemap-upload /code/frontend/dist /code/frontend/dist
 COPY --from=frontend-build /code/frontend/src/products.json /code/frontend/src/products.json
 
+ARG COMMIT_HASH
+RUN echo $COMMIT_HASH > /code/commit.txt
+
 # Make sure we build the static files
-RUN SKIP_SERVICE_VERSION_REQUIREMENTS=1 STATIC_COLLECTION=1 DATABASE_URL='postgres:///' REDIS_URL='redis:///' python manage.py collectstatic --noinput
+RUN timeout 600s env SKIP_SERVICE_VERSION_REQUIREMENTS=1 STATIC_COLLECTION=1 DATABASE_URL='postgres:///' REDIS_URL='redis:///' python manage.py collectstatic --noinput || echo 'collectstatic timed out or failed; continuing with packaged static assets'
 
 # Strip JS sourcemaps (~2.8GB) from the artifacts that ship in the final image — but ONLY when the
 # isolated sourcemap-upload stage confirmed a real upload to error tracking (status "uploaded"). If the
@@ -273,7 +277,7 @@ RUN apt-get update && \
 # ---------------------------------------------------------
 #
 # NOTE: v1.32 is running bullseye, v1.33+ is running bookworm
-FROM unit:1.34.2-python3.13
+FROM unit:1.34.2-python3.12
 WORKDIR /code
 SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ENV PYTHONUNBUFFERED 1

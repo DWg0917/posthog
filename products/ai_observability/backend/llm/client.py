@@ -102,9 +102,12 @@ def _get_provider(name: str, provider_key: "LLMProviderKey | None" = None) -> "P
     from products.ai_observability.backend.llm.providers.azure_openai import DEFAULT_API_VERSION, AzureOpenAIAdapter
     from products.ai_observability.backend.llm.providers.fireworks import FireworksAdapter
     from products.ai_observability.backend.llm.providers.gemini import GeminiAdapter
+    from products.ai_observability.backend.llm.providers.glm import GLMAdapter
     from products.ai_observability.backend.llm.providers.minimax import MiniMaxAdapter
+    from products.ai_observability.backend.llm.providers.mimo import MimoAdapter
     from products.ai_observability.backend.llm.providers.openai import OpenAIAdapter
     from products.ai_observability.backend.llm.providers.openrouter import OpenRouterAdapter
+    from products.ai_observability.backend.llm.providers.qwen import QwenAdapter
     from products.ai_observability.backend.llm.providers.together import TogetherAdapter
     from products.ai_observability.backend.llm.providers.zeabur import ZeaburAdapter
 
@@ -125,6 +128,12 @@ def _get_provider(name: str, provider_key: "LLMProviderKey | None" = None) -> "P
             return cast("Provider", MiniMaxAdapter())
         case "zeabur":
             return cast("Provider", ZeaburAdapter())
+        case "glm":
+            return cast("Provider", GLMAdapter())
+        case "mimo":
+            return cast("Provider", MimoAdapter())
+        case "qwen":
+            return cast("Provider", QwenAdapter())
         case "azure_openai":
             config = provider_key.encrypted_config if provider_key else {}
             return cast(

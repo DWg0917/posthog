@@ -69,6 +69,7 @@ def _extract_context(view_or_serializer, request=None) -> tuple[Optional[Any], O
 
 def _is_approvals_enabled(organization) -> bool:
     """Check if the approvals feature is available for this organization."""
+    # Self-hosted hobby deployments do not have a cloud billing plan.
     return organization.is_feature_available(AvailableFeature.APPROVALS)
 
 

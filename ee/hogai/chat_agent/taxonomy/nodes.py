@@ -20,7 +20,7 @@ from posthog.models import Team, User
 from ee.hogai.chat_agent.taxonomy.tools import TaxonomyTool
 from ee.hogai.core.mixins import StateClassMixin, TaxonomyUpdateDispatcherNodeMixin
 from ee.hogai.core.node import BaseAssistantNode
-from ee.hogai.llm import MaxChatOpenAI
+from ee.hogai.llm import get_configured_chat_model
 from ee.hogai.utils.helpers import format_events_yaml
 
 from .prompts import (
@@ -69,7 +69,7 @@ class TaxonomyAgentNode(
     def _get_model(self, state: TaxonomyStateType):
         # Check if this invocation should be billable (set by the calling tool)
         billable = getattr(state, "billable", False)
-        return MaxChatOpenAI(
+        return get_configured_chat_model(
             model="gpt-4.1",
             streaming=False,
             temperature=0.3,

@@ -166,3 +166,33 @@ This means:
 
 - **Stable URL**: `https://github.com/PostHog/posthog/releases/download/hobby-latest/posthog-hobby` always points to the latest build
 - **Version history**: All previous builds are available at `https://github.com/PostHog/posthog/releases?q=hobby-&expanded=true`
+# Custom single-server deployment
+
+The standard installer remains the upstream Hobby flow. For this repository's
+custom PostHog image and AI-provider configuration, start the dedicated wizard
+from the repository root:
+
+```bash
+cd bin/hobby-installer
+sudo go run . --custom
+```
+
+The wizard installs Docker/Compose if needed, signs in to Docker Hub, collects
+domain, image tags, AI provider/model/key, database credentials, Redis and
+object-storage credentials, and Temporal UI Basic Auth credentials. Generated
+passwords are masked and can be accepted by pressing Enter. It writes `.env`
+and `.env.services.runtime` with mode `0600`, hashes the Temporal UI password
+with Caddy, validates Compose, and runs `deploy.sh` while displaying progress.
+
+Create A records for both the PostHog domain and the Temporal UI hostname before
+starting. PostgreSQL is published on TCP 5432, and ClickHouse on TCP 8123/9000;
+the wizard publishes them on all network interfaces by default. Both database
+listeners use TLS with a generated self-signed certificate. PostgreSQL clients
+should use `sslmode=require`; ClickHouse clients should use HTTPS/native TLS and
+trust the generated certificate (or explicitly allow a self-signed certificate).
+Docker Hub credentials are
+stored by Docker on the server; use a read-only access token.
+
+The installer expects to run from the checked-out custom branch and refuses to
+overwrite an existing `.env`. Existing databases should be backed up before
+changing credentials or redeploying.

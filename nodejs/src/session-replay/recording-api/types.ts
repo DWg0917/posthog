@@ -69,6 +69,7 @@ export type RecordingApiConfig = Pick<
         SessionRecordingApiConfig,
         | 'SESSION_RECORDING_API_REDIS_HOST'
         | 'SESSION_RECORDING_API_REDIS_PORT'
+        | 'SESSION_RECORDING_API_REDIS_PASSWORD'
         | 'SESSION_RECORDING_KMS_ENDPOINT'
         | 'SESSION_RECORDING_DYNAMODB_ENDPOINT'
         | 'CLICKHOUSE_HOST'

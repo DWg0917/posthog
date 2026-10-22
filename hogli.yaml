@@ -1247,3 +1247,11 @@ environment:
         bin_script: report-jest-timings
         description: 'Render a Jest test-speed report from timing artifacts'
         hidden: true
+    build:custom:feature:flags:
+        bin_script: build-custom-feature-flags
+        description: 'Build and push a custom Feature Flags image from a commit'
+        hidden: true
+    scale_hobby_consumers:
+        bin_script: scale_hobby_consumers.py
+        description: 'TODO: add description for scale_hobby_consumers.py'
+        hidden: true

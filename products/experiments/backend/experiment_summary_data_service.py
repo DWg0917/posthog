@@ -1,7 +1,8 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, TypeIs, Union
+from typing import Any, Union
+from typing_extensions import TypeIs
 
 from django.conf import settings
 

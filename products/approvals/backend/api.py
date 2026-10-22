@@ -13,12 +13,10 @@ from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 
 from posthog.api.routing import TeamAndOrgViewSetMixin
-from posthog.constants import AvailableFeature
 from posthog.models import User
 from posthog.permissions import (
     OrganizationAdminWritePermissions,
     OrganizationMemberPermissions,
-    PremiumFeaturePermission,
 )
 
 from products.approvals.backend.exceptions import AlreadyVotedError, InvalidStateError, ReasonRequiredError
@@ -57,8 +55,7 @@ class ChangeRequestViewSet(TeamAndOrgViewSetMixin, viewsets.ReadOnlyModelViewSet
     scope_object = "approvals"
     scope_object_write_actions = ["approve", "reject", "cancel"]
     queryset = ChangeRequest.objects.all().order_by("-created_at")
-    permission_classes = [OrganizationMemberPermissions, PremiumFeaturePermission]
-    premium_feature_on_cloud = AvailableFeature.APPROVALS
+    permission_classes = [OrganizationMemberPermissions]
     serializer_class = ChangeRequestSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = ChangeRequestFilterSet
@@ -70,7 +67,7 @@ class ChangeRequestViewSet(TeamAndOrgViewSetMixin, viewsets.ReadOnlyModelViewSet
         request=ChangeRequestApproveSerializer,
         responses={200: ChangeRequestDecisionResponseSerializer},
     )
-    @action(methods=["POST"], detail=True, permission_classes=[PremiumFeaturePermission, CanApprove])
+    @action(methods=["POST"], detail=True, permission_classes=[CanApprove])
     def approve(self, request: Request, pk=None, **kwargs) -> Response:
         """
         Approve a change request.
@@ -109,7 +106,7 @@ class ChangeRequestViewSet(TeamAndOrgViewSetMixin, viewsets.ReadOnlyModelViewSet
         request=ChangeRequestRejectSerializer,
         responses={200: ChangeRequestDecisionResponseSerializer},
     )
-    @action(methods=["POST"], detail=True, permission_classes=[PremiumFeaturePermission, CanApprove])
+    @action(methods=["POST"], detail=True, permission_classes=[CanApprove])
     def reject(self, request: Request, pk=None, **kwargs) -> Response:
         """Reject a change request."""
         change_request: ChangeRequest = self.get_object()
@@ -142,7 +139,7 @@ class ChangeRequestViewSet(TeamAndOrgViewSetMixin, viewsets.ReadOnlyModelViewSet
             status=status.HTTP_200_OK,
         )
 
-    @action(methods=["POST"], detail=True, permission_classes=[PremiumFeaturePermission, CanCancel])
+    @action(methods=["POST"], detail=True, permission_classes=[CanCancel])
     def cancel(self, request: Request, pk=None, **kwargs) -> Response:
         """
         Cancel a change request.
@@ -179,8 +176,7 @@ class ApprovalPolicyViewSet(TeamAndOrgViewSetMixin, viewsets.ModelViewSet):
     scope_object = "approvals"
     queryset = ApprovalPolicy.objects.all().order_by("-created_at")
     serializer_class = ApprovalPolicySerializer
-    permission_classes = [OrganizationMemberPermissions, OrganizationAdminWritePermissions, PremiumFeaturePermission]
-    premium_feature_on_cloud = AvailableFeature.APPROVALS
+    permission_classes = [OrganizationMemberPermissions, OrganizationAdminWritePermissions]
 
     def safely_get_queryset(self, queryset: QuerySet) -> QuerySet:
         filters = self.request.query_params
