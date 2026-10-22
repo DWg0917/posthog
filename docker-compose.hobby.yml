@@ -553,6 +553,12 @@ services:
                 condition: service_started
             db:
                 condition: service_healthy
+    temporal-django-worker-analytics-platform:
+      extends:
+        service: temporal-django-worker
+      command: /code/bin/temporal-django-worker --task-queue analytics-platform-task-queue
+      restart: unless-stopped
+
     temporal-django-worker:
         command: /code/bin/temporal-django-worker --task-queue max-ai-task-queue
         extends:
