@@ -23,6 +23,7 @@ func TestCustomDeploymentCredentials(t *testing.T) {
 		ClickHouseReaderPassword: strings.Repeat("d", 64),
 		RedisPassword:            strings.Repeat("e", 64),
 		ObjectStoragePassword:    strings.Repeat("f", 64),
+		TemporalWorkerProfiles:   []string{"worker-general-purpose", "worker-data-warehouse"},
 	}
 	if err := writeCustomDeploymentFiles(config, "test-hash"); err != nil {
 		t.Fatal(err)
@@ -59,6 +60,7 @@ func TestCustomDeploymentCredentials(t *testing.T) {
 		"CLICKHOUSE_APP_PASSWORD":         config.ClickHouseAppPassword,
 		"CLICKHOUSE_API_PASSWORD":         config.ClickHouseAPISecret,
 		"CLICKHOUSE_DICT_READER_PASSWORD": config.ClickHouseReaderPassword,
+		"COMPOSE_PROFILES":                "worker-general-purpose,worker-data-warehouse",
 	} {
 		if values[key] != want {
 			t.Fatalf("%s was not propagated", key)

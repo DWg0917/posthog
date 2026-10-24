@@ -22,13 +22,32 @@ type customField struct {
 	secret, optional        bool
 }
 
+type customTemporalWorkerGroup struct {
+	profile, label, description string
+}
+
+var customTemporalWorkerGroups = []customTemporalWorkerGroup{
+	{profile: "worker-general-purpose", label: "General purpose", description: "Shared queue used by general workflows"},
+	{profile: "worker-data-warehouse", label: "Data warehouse", description: "Imports, metadata, modeling, and DuckLake"},
+	{profile: "worker-exports", label: "Exports", description: "Batch exports, video exports, and digests"},
+	{profile: "worker-experiments-billing-tasks", label: "Experiments, billing, and tasks", description: "Recalculations, billing, and task workflows"},
+	{profile: "worker-session-replay", label: "Session replay", description: "Session replay processing"},
+	{profile: "worker-error-tracking-logs", label: "Error tracking and logs", description: "Error tracking, screenshots, and logs"},
+	{profile: "worker-ai-analytics", label: "AI analytics", description: "LLM analytics and evaluations"},
+	{profile: "worker-system", label: "System", description: "Health checks, StampHog, and test workflows"},
+	{profile: "worker-replay-vision", label: "Replay vision", description: "Dedicated Replay Vision queue; enable only when needed"},
+}
+
 type customModel struct {
-	fields               []customField
-	index                int
-	input                textinput.Model
-	installing, complete bool
-	err                  error
-	spinner              spinner.Model
+	fields                []customField
+	index                 int
+	workerGroupIndex      int
+	selectedWorkerGroups  map[string]bool
+	selectingWorkerGroups bool
+	input                 textinput.Model
+	installing, complete  bool
+	err                   error
+	spinner               spinner.Model
 }
 
 type customDoneMsg struct{ err error }
@@ -69,7 +88,7 @@ func newCustomModel() (customModel, error) {
 	input := textinput.New()
 	input.CharLimit = 512
 	input.Width = 68
-	m := customModel{fields: fields, input: input}
+	m := customModel{fields: fields, input: input, selectedWorkerGroups: map[string]bool{"worker-general-purpose": true}}
 	m.focusField()
 	return m, nil
 }
@@ -114,6 +133,48 @@ func (m customModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if m.selectingWorkerGroups {
+			switch msg.String() {
+			case "ctrl+c":
+				return m, tea.Quit
+			case "esc":
+				m.selectingWorkerGroups = false
+				m.focusField()
+				return m, textinput.Blink
+			case "up", "k":
+				if m.workerGroupIndex > 0 {
+					m.workerGroupIndex--
+				}
+			case "down", "j":
+				if m.workerGroupIndex < len(customTemporalWorkerGroups)-1 {
+					m.workerGroupIndex++
+				}
+			case " ":
+				profile := customTemporalWorkerGroups[m.workerGroupIndex].profile
+				m.selectedWorkerGroups[profile] = !m.selectedWorkerGroups[profile]
+			case "enter":
+				profiles := make([]string, 0, len(m.selectedWorkerGroups))
+				for _, group := range customTemporalWorkerGroups {
+					if m.selectedWorkerGroups[group.profile] {
+						profiles = append(profiles, group.profile)
+					}
+				}
+				config, err := customConfigFromFields(m.fields)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				config.TemporalWorkerProfiles = profiles
+				m.err = nil
+				m.selectingWorkerGroups = false
+				m.installing = true
+				m.spinner = spinner.New()
+				m.spinner.Spinner = spinner.Dot
+				m.spinner.Style = ui.SpinnerStyle
+				return m, tea.Batch(m.spinner.Tick, m.install(config), func() tea.Msg { return customLogTickMsg{} })
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
@@ -135,16 +196,9 @@ func (m customModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusField()
 				return m, textinput.Blink
 			}
-			config, err := customConfigFromFields(m.fields)
-			if err != nil {
-				m.err = err
-				return m, nil
-			}
-			m.installing = true
-			m.spinner = spinner.New()
-			m.spinner.Spinner = spinner.Dot
-			m.spinner.Style = ui.SpinnerStyle
-			return m, tea.Batch(m.spinner.Tick, m.install(config), func() tea.Msg { return customLogTickMsg{} })
+			m.selectingWorkerGroups = true
+			m.workerGroupIndex = 0
+			return m, nil
 		}
 	}
 	if !m.installing && !m.complete {
@@ -169,6 +223,31 @@ func (m customModel) View() string {
 	if m.installing {
 		logs := core.GetLogger().GetLines(8)
 		return lipgloss.JoinVertical(lipgloss.Left, ui.TitleStyle.Render("Deploying custom PostHog"), "", m.spinner.View()+" Running deployment steps", "", ui.MutedStyle.Render(strings.Join(logs, "\n")), "", ui.HelpStyle.Render("Keep this terminal open; secrets are hidden"))
+	}
+	if m.selectingWorkerGroups {
+		lines := []string{
+			ui.TitleStyle.Render("Choose Temporal worker groups"),
+			ui.SubtitleStyle.Render("Selected groups start during deployment and can be changed later."),
+			"",
+		}
+		for index, group := range customTemporalWorkerGroups {
+			marker := "[ ]"
+			if m.selectedWorkerGroups[group.profile] {
+				marker = "[x]"
+			}
+			line := fmt.Sprintf("%s %s — %s", marker, group.label, group.description)
+			if index == m.workerGroupIndex {
+				line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render("> " + line)
+			} else {
+				line = "  " + line
+			}
+			lines = append(lines, line)
+		}
+		lines = append(lines, "", ui.MutedStyle.Render("↑/↓: move / Space: toggle / Enter: deploy / Esc: previous step"))
+		if m.err != nil {
+			lines = append(lines, ui.ErrorStyle.Render(m.err.Error()))
+		}
+		return lipgloss.NewStyle().Padding(2, 4).Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
 	}
 	f := m.fields[m.index]
 	secretWarning := ""

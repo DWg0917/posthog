@@ -325,6 +325,7 @@ services:
             CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             PERSONS_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             BEHAVIORAL_COHORTS_DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
+            COOKIELESS_REDIS_HOST: ''
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
             # The combined-mode AI consumer reads persons through PersonHog
             PERSONHOG_ADDR: 'personhog-router:50052'
@@ -553,12 +554,6 @@ services:
                 condition: service_started
             db:
                 condition: service_healthy
-    temporal-django-worker-analytics-platform:
-      extends:
-        service: temporal-django-worker
-      command: /code/bin/temporal-django-worker --task-queue analytics-platform-task-queue
-      restart: unless-stopped
-
     temporal-django-worker:
         command: /code/bin/temporal-django-worker --task-queue max-ai-task-queue
         extends:
@@ -625,6 +620,55 @@ services:
             - seaweedfs
             - temporal
             - browserless
+
+    # Optional Temporal worker groups. Keep each group in its own Compose profile so
+    # deployments can start only the queues they use. The original worker services above
+    # remain unchanged for compatibility.
+    temporal-django-worker-general-purpose:
+        extends:
+            service: temporal-django-worker
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'general-purpose-task-queue']
+    temporal-django-worker-data-warehouse:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-data-warehouse']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'data-warehouse-task-queue,data-warehouse-metadata-task-queue,data-modeling-task-queue,ducklake-task-queue']
+    temporal-django-worker-cdp:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-cdp']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'data-warehouse-cdp-producer-task-queue']
+    temporal-django-worker-exports:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-exports']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'batch-exports-task-queue,no-sandbox-python-django,video-export-task-queue,weekly-digest-task-queue']
+    temporal-django-worker-experiments-billing-tasks:
+        extends:
+            service: temporal-django-worker
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'experiments-recalculation-task-queue,billing-task-queue,tasks-task-queue']
+    temporal-django-worker-session-replay:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-session-replay']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'session-replay-task-queue']
+    temporal-django-worker-error-tracking-logs:
+        extends:
+            service: temporal-django-worker
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'error-tracking-task-queue,error-tracking-lifecycle-task-queue,event-screenshots-task-queue,logs-alerting-task-queue,logs-volume-tick-task-queue']
+    temporal-django-worker-ai-analytics:
+        extends:
+            service: temporal-django-worker
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'llm-analytics-task-queue,llm-analytics-evals-task-queue']
+    temporal-django-worker-system:
+        extends:
+            service: temporal-django-worker
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'health-check-task-queue,stamphog-task-queue,test-task-queue']
+    temporal-django-worker-replay-vision:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-replay-vision']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'replay-vision-task-queue']
 
     # AI Event Capture (for $ai_* events)
     capture-ai:

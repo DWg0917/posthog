@@ -70,6 +70,12 @@ services:
                         path /api/feature_flag/local_evaluation/*
                     }
 
+                    @decide {
+                        path /decide
+                        path /decide/
+                        path /decide/*
+                    }
+
                     @surveys {
                         path /surveys
                         path /surveys/
@@ -116,6 +122,13 @@ services:
 
                     handle @capture-logs {
                         reverse_proxy capture-logs:4318
+                    }
+
+                    handle @decide {
+                        rewrite * /flags/
+                        reverse_proxy feature-flags:3001 {
+                            header_up X-Original-Endpoint decide
+                        }
                     }
 
                     handle @flags {

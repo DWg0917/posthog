@@ -145,7 +145,28 @@ POSTGRES_USER=${POSTGRES_USER:-$(env_value POSTGRES_USER)}
 POSTGRES_USER=${POSTGRES_USER:-posthog}
 if [[ "$(timeout 30s sudo -n docker exec "$(sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q db | head -n1)" psql -U "$POSTGRES_USER" -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'cyclotron_jobs')" 2>/dev/null || true)" != "t" ]] then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U "$POSTGRES_USER" -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --scale ingestion-general="$INGESTION_GENERAL_REPLICAS"
-sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate proxy web worker temporal-django-worker plugins ingestion-error-tracking temporal-django-worker-general-purpose temporal-django-worker-experiments-billing-tasks temporal-django-worker-error-tracking-logs temporal-django-worker-ai-analytics temporal-django-worker-system
+COMPOSE_PROFILES=$(env_value COMPOSE_PROFILES)
+IFS=',' read -ra ENABLED_PROFILES <<< "$COMPOSE_PROFILES"
+TEMPORAL_WORKER_GROUPS=(worker-cdp worker-data-warehouse worker-exports worker-session-replay worker-replay-vision)
+TEMPORAL_WORKER_SERVICES=()
+for profile in "${ENABLED_PROFILES[@]}"; do
+  for group in "${TEMPORAL_WORKER_GROUPS[@]}"; do
+    if [[ "$profile" == "$group" ]]; then
+      TEMPORAL_WORKER_SERVICES+=("temporal-django-$group")
+    fi
+  done
+done
+if [[ ${#TEMPORAL_WORKER_SERVICES[@]} -gt 0 ]]; then
+  echo "Starting selected Temporal worker groups: ${TEMPORAL_WORKER_SERVICES[*]}"
+  sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "${TEMPORAL_WORKER_SERVICES[@]}"
+fi
+for group in "${TEMPORAL_WORKER_GROUPS[@]}"; do
+  service="temporal-django-$group"
+  if [[ " ${TEMPORAL_WORKER_SERVICES[*]} " != *" $service "* ]]; then
+    sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop "temporal-django-$group" >/dev/null
+  fi
+done
 python3 bin/scale_hobby_consumers.py --apply \
   --partitions "$INGESTION_TOPIC_PARTITIONS" \
   --consumers "$CLICKHOUSE_KAFKA_CONSUMERS" \

@@ -29,6 +29,7 @@ type CustomDeployConfig struct {
 	CaddyUsername, CaddyPassword                                         string
 	AIProvider, AIModel, AIBaseURL, AIAPIKey                             string
 	AppImage, NodeImage, FeatureFlagsImage                               string
+	TemporalWorkerProfiles                                               []string
 }
 
 func GenerateDeploymentPassword() (string, error) {
@@ -231,6 +232,7 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 		"INGESTION_GENERAL_REPLICAS":       "4",
 		"INGESTION_TOPIC_PARTITIONS":       "8",
 		"CLICKHOUSE_KAFKA_CONSUMERS":       "8",
+		"COMPOSE_PROFILES":                 strings.Join(config.TemporalWorkerProfiles, ","),
 	}
 	if config.AIProvider != "" && config.AIProvider != "none" {
 		provider := strings.ToLower(config.AIProvider)
