@@ -369,6 +369,7 @@ services:
         restart: on-failure
         env_file: ${SERVICE_ENV_FILE:-.env.services}
         environment: &worker_env
+            INTERNAL_REQUEST_TOKEN: "${INTERNAL_REQUEST_TOKEN:?required}"
             OTEL_SDK_DISABLED: 'true'
             API_QUERIES_PER_TEAM: '{"1": 100}'
             KAFKA_HOSTS: 'kafka'
@@ -508,6 +509,7 @@ services:
             # Optional: Use separate Flags Redis URL for read replicas
             # FLAGS_REDIS_READER_URL: 'redis://redis-replica:6379/1'
             ADDRESS: '0.0.0.0:3001'
+            INTERNAL_REQUEST_TOKEN: "${INTERNAL_REQUEST_TOKEN:?required}"
             RUST_LOG: 'info'
             COOKIELESS_REDIS_HOST: redis7
             COOKIELESS_REDIS_PORT: 6379
@@ -640,7 +642,7 @@ services:
             CLICKHOUSE_DATABASE: 'posthog'
             CLICKHOUSE_SECURE: 'false'
             CLICKHOUSE_VERIFY: 'false'
-            SESSION_RECORDING_API_REDIS_HOST: redis7
+            SESSION_RECORDING_API_REDIS_HOST: ${REDIS_URL:-redis://redis7:6379/}
             SESSION_RECORDING_API_REDIS_PORT: 6379
             SESSION_RECORDING_API_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
 
@@ -664,7 +666,7 @@ services:
             DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             KAFKA_HOSTS: 'kafka:9092'
             REDIS_URL: ${REDIS_URL:-redis://redis7:6379/}
-            LOGS_REDIS_HOST: redis7
+            LOGS_REDIS_HOST: ${REDIS_URL:-redis://redis7:6379/}
             LOGS_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             # Hog log transformations: function health state lives on CDP redis, and
             # encrypted function inputs need the salt keys (same as error tracking above)
@@ -680,7 +682,7 @@ services:
             DATABASE_URL: 'postgres://${POSTGRES_USER:-posthog}:${POSTGRES_PASSWORD:-posthog}@db:5432/posthog'
             KAFKA_HOSTS: 'kafka:9092'
             REDIS_URL: ${REDIS_URL:-redis://redis7:6379/}
-            TRACES_REDIS_HOST: redis7
+            TRACES_REDIS_HOST: ${REDIS_URL:-redis://redis7:6379/}
             TRACES_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
 
     livestream:

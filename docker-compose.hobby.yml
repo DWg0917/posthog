@@ -135,7 +135,7 @@ services:
             HEATMAP_BROWSERLESS_TOKEN: ${BROWSERLESS_SECRET:-$POSTHOG_SECRET}
             # Point Django at the Rust feature-flags container; the setting
             # otherwise defaults to localhost:3001.
-            FEATURE_FLAGS_SERVICE_URL: 'http://feature-flags:3001'
+            FEATURE_FLAGS_SERVICE_URL:
             # The logs product uses a dedicated ClickHouse cluster config (separate
             # from CLICKHOUSE_HOST) whose host defaults to localhost and whose SECURE
             # defaults to true outside DEBUG. Point it at the stack's ClickHouse over
@@ -283,11 +283,11 @@ services:
             CDP_REDIS_HOST: redis7
             CDP_REDIS_PORT: 6379
             CDP_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-            LOGS_REDIS_HOST: redis7
+            LOGS_REDIS_HOST: ${REDIS_URL:-redis://redis7:6379/}
             LOGS_REDIS_PORT: 6379
             LOGS_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             LOGS_REDIS_TLS: 'false'
-            TRACES_REDIS_HOST: redis7
+            TRACES_REDIS_HOST: ${REDIS_URL:-redis://redis7:6379/}
             TRACES_REDIS_PORT: 6379
             TRACES_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
             TRACES_REDIS_TLS: 'false'
