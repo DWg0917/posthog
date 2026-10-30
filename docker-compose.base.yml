@@ -369,7 +369,7 @@ services:
         restart: on-failure
         env_file: ${SERVICE_ENV_FILE:-.env.services}
         environment: &worker_env
-            INTERNAL_REQUEST_TOKEN: "${INTERNAL_REQUEST_TOKEN:?required}"
+            INTERNAL_REQUEST_TOKEN: ${INTERNAL_REQUEST_TOKEN:-$POSTHOG_SECRET}
             OTEL_SDK_DISABLED: 'true'
             API_QUERIES_PER_TEAM: '{"1": 100}'
             KAFKA_HOSTS: 'kafka'
@@ -509,7 +509,7 @@ services:
             # Optional: Use separate Flags Redis URL for read replicas
             # FLAGS_REDIS_READER_URL: 'redis://redis-replica:6379/1'
             ADDRESS: '0.0.0.0:3001'
-            INTERNAL_REQUEST_TOKEN: "${INTERNAL_REQUEST_TOKEN:?required}"
+            INTERNAL_REQUEST_TOKEN: ${INTERNAL_REQUEST_TOKEN:-$POSTHOG_SECRET}
             RUST_LOG: 'info'
             COOKIELESS_REDIS_HOST: redis7
             COOKIELESS_REDIS_PORT: 6379

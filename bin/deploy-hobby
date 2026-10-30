@@ -168,6 +168,8 @@ REGISTRY_URL=$REGISTRY_URL
 CADDY_TLS_BLOCK=$TLS_BLOCK
 CADDY_HOST="$DOMAIN, http://, https://"
 POSTHOG_APP_TAG=$POSTHOG_APP_TAG
+POSTHOG_NODE_IMAGE=${POSTHOG_NODE_IMAGE:-${REGISTRY_URL}-node:latest}
+POSTHOG_FEATURE_FLAGS_IMAGE=${POSTHOG_FEATURE_FLAGS_IMAGE:-ghcr.io/posthog/posthog/feature-flags:master}
 EOF
     # Only persist AI keys that were actually provided — skip writing a blank
     # ANTHROPIC_API_KEY= line that would just clutter .env with an empty assignment.
@@ -177,6 +179,15 @@ EOF
     [ -n "$ANTHROPIC_API_KEY" ] && echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> .env
     [ -n "$OPENAI_API_KEY" ] && echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
 fi
+
+# Keep the token stable so Django and feature-flags retain matching credentials across reruns.
+if grep -q '^INTERNAL_REQUEST_TOKEN=$' .env; then
+    INTERNAL_REQUEST_TOKEN=$(openssl rand -hex 48)
+    sed -i "s/^INTERNAL_REQUEST_TOKEN=$/INTERNAL_REQUEST_TOKEN=$INTERNAL_REQUEST_TOKEN/" .env
+elif ! grep -q '^INTERNAL_REQUEST_TOKEN=.' .env; then
+    echo "INTERNAL_REQUEST_TOKEN=$(openssl rand -hex 48)" >> .env
+fi
+chmod 600 .env
 
 # Download GeoLite2-City.mmdb if it doesn't exist
 echo "Downloading GeoIP database file"

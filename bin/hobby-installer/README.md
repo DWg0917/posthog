@@ -133,6 +133,17 @@ Both `tui/` and `ci/` consume the same `core.GetChecks()` and `core.GetInstallSt
 5. **Install** - Clone repo, generate config, pull images, start Docker stack
 6. **Complete** - Success message with URL or troubleshooting tips
 
+Both Hobby installers generate INTERNAL_REQUEST_TOKEN in the server's .env
+file and pass the same value to Django and the Rust feature-flags service.
+Upgrades keep an existing value and generate one only when the variable is
+missing or empty. The legacy bin/deploy-hobby script also restricts .env
+permissions to the owner. Keep .env private; never commit the token.
+
+Set POSTHOG_NODE_IMAGE and POSTHOG_FEATURE_FLAGS_IMAGE to full image references
+before running either installer to use custom images, including component tags
+stored in one Docker Hub repository. When unset, the existing Node and Feature
+Flags image locations remain the defaults.
+
 ## Production deployment
 
 On an Ubuntu server:

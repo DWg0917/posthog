@@ -11,12 +11,15 @@ import (
 
 type EnvConfig struct {
 	PosthogSecret        string
+	InternalRequestToken string
 	EncryptionSaltKeys   string
 	Domain               string
 	TLSBlock             string
 	RegistryURL          string
 	PosthogAppTag        string
 	PosthogNodeTag       string
+	PosthogNodeImage     string
+	FeatureFlagsImage    string
 	SessionRecordingDate string
 }
 
@@ -31,6 +34,11 @@ func NewEnvConfig(domain, version string) (*EnvConfig, error) {
 		return nil, fmt.Errorf("failed to generate encryption key: %w", err)
 	}
 
+	internalRequestToken, err := GenerateSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate internal request token: %w", err)
+	}
+
 	registryURL := os.Getenv("REGISTRY_URL")
 	if registryURL == "" {
 		registryURL = "posthog/posthog"
@@ -43,20 +51,34 @@ func NewEnvConfig(domain, version string) (*EnvConfig, error) {
 		nodeTag = "latest"
 	}
 
+	nodeImage := os.Getenv("POSTHOG_NODE_IMAGE")
+	if nodeImage == "" {
+		nodeImage = fmt.Sprintf("%s-node:%s", registryURL, nodeTag)
+	}
+
+	featureFlagsImage := os.Getenv("POSTHOG_FEATURE_FLAGS_IMAGE")
+	if featureFlagsImage == "" {
+		featureFlagsImage = "ghcr.io/posthog/posthog/feature-flags:master"
+	}
+
 	return &EnvConfig{
 		PosthogSecret:        secret,
+		InternalRequestToken: internalRequestToken,
 		EncryptionSaltKeys:   encryptionKey,
 		Domain:               domain,
 		TLSBlock:             tlsBlock,
 		RegistryURL:          registryURL,
 		PosthogAppTag:        version,
 		PosthogNodeTag:       nodeTag,
+		PosthogNodeImage:     nodeImage,
+		FeatureFlagsImage:    featureFlagsImage,
 		SessionRecordingDate: time.Now().Format(time.RFC3339),
 	}, nil
 }
 
 func (c *EnvConfig) WriteEnvFile() error {
 	content := fmt.Sprintf(`POSTHOG_SECRET=%s
+INTERNAL_REQUEST_TOKEN=%s
 ENCRYPTION_SALT_KEYS=%s
 DOMAIN=%s
 TLS_BLOCK=%s
@@ -65,9 +87,12 @@ CADDY_TLS_BLOCK=%s
 CADDY_HOST="%s, http://, https://"
 POSTHOG_APP_TAG=%s
 POSTHOG_NODE_TAG=%s
+POSTHOG_NODE_IMAGE=%s
+POSTHOG_FEATURE_FLAGS_IMAGE=%s
 SESSION_RECORDING_V2_METADATA_SWITCHOVER=%s
 `,
 		c.PosthogSecret,
+		c.InternalRequestToken,
 		c.EncryptionSaltKeys,
 		c.Domain,
 		c.TLSBlock,
@@ -76,6 +101,8 @@ SESSION_RECORDING_V2_METADATA_SWITCHOVER=%s
 		c.Domain,
 		c.PosthogAppTag,
 		c.PosthogNodeTag,
+		c.PosthogNodeImage,
+		c.FeatureFlagsImage,
 		c.SessionRecordingDate,
 	)
 
@@ -86,12 +113,15 @@ func LoadExistingEnv() map[string]string {
 	values := make(map[string]string)
 	keys := []string{
 		"POSTHOG_SECRET",
+		"INTERNAL_REQUEST_TOKEN",
 		"ENCRYPTION_SALT_KEYS",
 		"DOMAIN",
 		"TLS_BLOCK",
 		"REGISTRY_URL",
 		"POSTHOG_APP_TAG",
 		"POSTHOG_NODE_TAG",
+		"POSTHOG_NODE_IMAGE",
+		"POSTHOG_FEATURE_FLAGS_IMAGE",
 		"SESSION_RECORDING_V2_METADATA_SWITCHOVER",
 		"SESSION_RECORDING_STORAGE_MIGRATED_TO_SEAWEEDFS",
 	}
@@ -128,6 +158,36 @@ func UpdateEnvValue(key, value string) error {
 
 func UpdateEnvForUpgrade(version string) error {
 	existing := LoadExistingEnv()
+
+	if existing["INTERNAL_REQUEST_TOKEN"] == "" {
+		token, err := GenerateSecret()
+		if err != nil {
+			return fmt.Errorf("failed to generate internal request token: %w", err)
+		}
+		if err := UpdateEnvValue("INTERNAL_REQUEST_TOKEN", token); err != nil {
+			return err
+		}
+	}
+
+	if existing["POSTHOG_NODE_IMAGE"] == "" {
+		registryURL := existing["REGISTRY_URL"]
+		if registryURL == "" {
+			registryURL = "posthog/posthog"
+		}
+		nodeTag := existing["POSTHOG_NODE_TAG"]
+		if nodeTag == "" {
+			nodeTag = "latest"
+		}
+		if err := UpdateEnvValue("POSTHOG_NODE_IMAGE", fmt.Sprintf("%s-node:%s", registryURL, nodeTag)); err != nil {
+			return err
+		}
+	}
+
+	if existing["POSTHOG_FEATURE_FLAGS_IMAGE"] == "" {
+		if err := UpdateEnvValue("POSTHOG_FEATURE_FLAGS_IMAGE", "ghcr.io/posthog/posthog/feature-flags:master"); err != nil {
+			return err
+		}
+	}
 
 	if existing["ENCRYPTION_SALT_KEYS"] == "" {
 		key, err := GenerateEncryptionKey()
