@@ -44,7 +44,7 @@ from ee.hogai.core.mixins import AssistantContextMixin
 from ee.hogai.core.node import AssistantNode
 from django.conf import settings
 
-from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
+from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI, MaxChatQwen
 from ee.hogai.utils.helpers import filter_and_merge_messages, find_last_message_of_type
 from ee.hogai.utils.markdown import remove_markdown
 from ee.hogai.utils.prompt import format_prompt_string
@@ -80,6 +80,8 @@ def _build_memory_model(*, user, team, model: str, temperature: float, stop_sequ
         kwargs["stop_sequences"] = stop_sequences
     if configured_provider in {"glm", "zhipu", "zhipuai"}:
         return MaxChatGLM(model=getattr(settings, "AI_MODEL", "") or model, **kwargs)
+    if configured_provider == "qwen":
+        return MaxChatQwen(model=getattr(settings, "AI_MODEL", "") or model, **kwargs)
     if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
         return MaxChatOpenAI(model=settings.MIMO_SUPPORTED_MODELS[0], **kwargs)
     if configured_provider == "custom" or (not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL):

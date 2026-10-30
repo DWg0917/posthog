@@ -43,7 +43,7 @@ from ee.hogai.core.agent_modes.prompts import (
 )
 from ee.hogai.core.agent_modes.toolkit import AgentToolkitManager
 from ee.hogai.core.executable import BaseAgentExecutable
-from ee.hogai.llm import MaxChatAnthropic, MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
+from ee.hogai.llm import MaxChatAnthropic, MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI, MaxChatQwen
 from ee.hogai.tool import MaxTool, ToolMessagesArtifact
 from ee.hogai.tool_errors import MaxToolError
 from ee.hogai.utils.anthropic import add_cache_control, convert_to_anthropic_messages
@@ -277,7 +277,21 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
             getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")
         ).strip().lower()
 
-        if configured_provider in {"glm", "zhipu", "zhipuai"}:
+        if configured_provider == "qwen":
+            base_model = MaxChatQwen(
+                model=getattr(settings, "AI_MODEL", "") or "qwen3.8-max",
+                streaming=True,
+                stream_usage=True,
+                user=self._user,
+                team=self._team,
+                max_tokens=16384,
+                conversation_start_dt=state.start_dt,
+                billable=True,
+                bypass_proxy=is_routing_through_llm_gateway,
+                posthog_properties=self._get_agent_mode_posthog_properties(state),
+                **gateway_kwargs,
+            )
+        elif configured_provider in {"glm", "zhipu", "zhipuai"}:
             base_model = MaxChatGLM(
                 model=getattr(settings, "AI_MODEL", "") or "glm-5",
                 streaming=True,

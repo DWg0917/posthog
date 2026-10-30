@@ -15,7 +15,7 @@ from ee.hogai.core.node import AssistantNode
 from ee.hogai.core.title_generator.prompts import TITLE_AND_TOPIC_GENERATION_PROMPT, TITLE_GENERATION_PROMPT
 from django.conf import settings
 
-from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI
+from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI, MaxChatQwen
 from ee.hogai.utils.feature_flags import has_conversation_topic_feature_flag
 from ee.hogai.utils.helpers import find_last_message_of_type
 from ee.hogai.utils.types import AssistantState, PartialAssistantState
@@ -98,6 +98,11 @@ class TitleGeneratorNode(AssistantNode):
             "posthog_properties": {"topic_classification": topic_classification},
         }
 
+        if configured_provider == "qwen":
+            return MaxChatQwen(
+                model=getattr(settings, "AI_MODEL", "") or "qwen3.8-max",
+                **common_kwargs,
+            )
         if configured_provider in {"glm", "zhipu", "zhipuai"}:
             return MaxChatGLM(
                 model=getattr(settings, "AI_MODEL", "") or "glm-5",

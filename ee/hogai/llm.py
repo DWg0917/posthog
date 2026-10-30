@@ -392,7 +392,7 @@ class MaxChatQwen(MaxChatMixin, ChatOpenAI):
         if not self.openai_api_base or self.openai_api_base == "https://api.openai.com/v1":
             self.openai_api_base = settings.QWEN_BASE_URL
         if not self.openai_api_key:
-            self.openai_api_key = settings.QWEN_API_KEY
+            self.openai_api_key = SecretStr(settings.QWEN_API_KEY)
 
 
 class MaxChatMiMo(MaxChatMixin, ChatOpenAI):
