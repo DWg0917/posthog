@@ -14,6 +14,18 @@ x-logging: &default-logging
         max-size: '50m'
         max-file: '3'
 
+x-warehouse-env: &warehouse-env
+    ENCRYPTION_SALT_KEYS: ${ENCRYPTION_SALT_KEYS}
+    DATA_WAREHOUSE_REDIS_HOST: :${REDIS_PASSWORD}@redis7
+    DATA_WAREHOUSE_REDIS_PORT: '6379'
+    USE_LOCAL_SETUP: 'true'
+    OBJECT_STORAGE_ENABLED: 'true'
+    OBJECT_STORAGE_ENDPOINT: http://objectstorage:19000
+    OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID}
+    OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY}
+    DATAWAREHOUSE_LOCAL_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY_ID}
+    DATAWAREHOUSE_LOCAL_ACCESS_SECRET: ${OBJECT_STORAGE_SECRET_ACCESS_KEY}
+
 services:
     db:
         extends:
@@ -111,6 +123,7 @@ services:
             service: worker
         logging: *default-logging
         environment:
+            <<: *warehouse-env
             CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
             CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
@@ -194,6 +207,7 @@ services:
             - ./compose:/compose
         image: ${POSTHOG_APP_IMAGE:-$REGISTRY_URL:$POSTHOG_APP_TAG}
         environment:
+            <<: *warehouse-env
             CLICKHOUSE_USER: ${CLICKHOUSE_USER:-app}
             CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-${CLICKHOUSE_APP_PASSWORD:?Set CLICKHOUSE_APP_PASSWORD in .env}}
             SITE_URL: https://$DOMAIN
@@ -632,12 +646,20 @@ services:
         extends:
             service: temporal-django-worker
         profiles: ['worker-data-warehouse']
+        environment: *warehouse-env
         command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'data-warehouse-task-queue,data-warehouse-metadata-task-queue,data-modeling-task-queue,ducklake-task-queue']
     temporal-django-worker-cdp:
         extends:
             service: temporal-django-worker
         profiles: ['worker-cdp']
         command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'data-warehouse-cdp-producer-task-queue']
+    warehouse-sources-load:
+        extends:
+            service: temporal-django-worker
+        profiles: ['worker-data-warehouse']
+        command: ['python', 'manage.py', 'run_warehouse_sources_load']
+        environment: *warehouse-env
+
     temporal-django-worker-exports:
         extends:
             service: temporal-django-worker

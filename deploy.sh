@@ -154,6 +154,9 @@ for profile in "${ENABLED_PROFILES[@]}"; do
   for group in "${TEMPORAL_WORKER_GROUPS[@]}"; do
     if [[ "$profile" == "$group" ]]; then
       TEMPORAL_WORKER_SERVICES+=("temporal-django-$group")
+            if [[ "$group" == "worker-data-warehouse" ]]; then
+                TEMPORAL_WORKER_SERVICES+=("warehouse-sources-load")
+            fi
     fi
   done
 done
@@ -165,6 +168,9 @@ for group in "${TEMPORAL_WORKER_GROUPS[@]}"; do
   service="temporal-django-$group"
   if [[ " ${TEMPORAL_WORKER_SERVICES[*]} " != *" $service "* ]]; then
     sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop "temporal-django-$group" >/dev/null
+        if [[ "$group" == "worker-data-warehouse" ]]; then
+            sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop warehouse-sources-load >/dev/null
+        fi
   fi
 done
 python3 bin/scale_hobby_consumers.py --apply \
