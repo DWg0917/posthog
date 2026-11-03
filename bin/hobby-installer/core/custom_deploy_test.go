@@ -25,7 +25,7 @@ func TestCustomDeploymentCredentials(t *testing.T) {
 		ObjectStoragePassword:    strings.Repeat("f", 64),
 		TemporalWorkerProfiles:   []string{"worker-general-purpose", "worker-data-warehouse"},
 	}
-	if err := writeCustomDeploymentFiles(config, "test-hash"); err != nil {
+	if err := writeCustomDeploymentFiles(config, "test-hash", ""); err != nil {
 		t.Fatal(err)
 	}
 	values := map[string]string{}
@@ -87,6 +87,41 @@ func TestValidateDatabaseUsername(t *testing.T) {
 				t.Fatalf("ValidateDatabaseUsername(%q) error = %v, want valid=%t", test.username, err, test.valid)
 			}
 		})
+	}
+}
+
+func TestKafkaUIEnabledDeployment(t *testing.T) {
+	template, err := os.ReadFile("../../../.env.services")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile(".env.services", template, 0600); err != nil {
+		t.Fatal(err)
+	}
+	config := CustomDeployConfig{
+		KafkaDomain: "kafka.example.com", KafkaUsername: "admin", KafkaPassword: "example-secret-password-not-real",
+		TemporalWorkerProfiles: []string{"worker-data-warehouse"},
+	}
+	if err := writeCustomDeploymentFiles(config, "temporal-hash", "$2a$test-kafka-hash"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(".env")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"KAFKA_UI_DOMAIN='kafka.example.com'",
+		"KAFKA_UI_USERNAME='admin'",
+		"KAFKA_UI_PASSWORD_HASH='$2a$test-kafka-hash'",
+		"COMPOSE_PROFILES='worker-data-warehouse,kafka-ui'",
+	} {
+		if !strings.Contains(string(data), expected) {
+			t.Fatalf("deployment config missing %s", expected)
+		}
+	}
+	if strings.Contains(string(data), config.KafkaPassword) {
+		t.Fatal("deployment config must not contain the Kafka UI password")
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 
 type CustomDeployConfig struct {
 	Domain, TemporalDomain                                               string
+	KafkaDomain, KafkaUsername, KafkaPassword                            string
 	DockerHubUsername, DockerHubToken                                    string
 	PostgresUser, PostgresPassword                                       string
 	ClickHouseAppPassword, ClickHouseAPISecret, ClickHouseReaderPassword string
@@ -78,22 +79,23 @@ func RunCustomDeployment(config CustomDeployConfig) error {
 	}
 
 	logger.WriteString("Step 3/6: creating Caddy Basic Auth hash\n")
-	hashCmd := exec.Command("docker", "run", "--rm", "-i", "caddy:2", "caddy", "hash-password")
-	hashCmd.Stdin = strings.NewReader(config.CaddyPassword + "\n")
-	hashOutput, err := hashCmd.Output()
+	passwordHash, err := hashCaddyPassword(config.CaddyPassword)
 	if err != nil {
-		return fmt.Errorf("could not create Caddy password hash: %w", err)
+		return err
 	}
-	passwordHash := strings.TrimSpace(string(hashOutput))
-	if !strings.HasPrefix(passwordHash, "$2a$") && !strings.HasPrefix(passwordHash, "$2b$") {
-		return fmt.Errorf("Caddy returned an unexpected password hash")
+	kafkaPasswordHash := ""
+	if config.KafkaDomain != "" {
+		kafkaPasswordHash, err = hashCaddyPassword(config.KafkaPassword)
+		if err != nil {
+			return err
+		}
 	}
 
 	logger.WriteString("Step 4/6: writing private deployment configuration\n")
 	if err := createDatabaseCertificates(config.Domain); err != nil {
 		return err
 	}
-	if err := writeCustomDeploymentFiles(config, passwordHash); err != nil {
+	if err := writeCustomDeploymentFiles(config, passwordHash, kafkaPasswordHash); err != nil {
 		return err
 	}
 
@@ -110,6 +112,20 @@ func RunCustomDeployment(config CustomDeployConfig) error {
 		return fmt.Errorf("deployment failed: %w; see hobby-installer.log for details", err)
 	}
 	return nil
+}
+
+func hashCaddyPassword(password string) (string, error) {
+	hashCmd := exec.Command("docker", "run", "--rm", "-i", "caddy:2", "caddy", "hash-password")
+	hashCmd.Stdin = strings.NewReader(password + "\n")
+	hashOutput, err := hashCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("could not create Caddy password hash: %w", err)
+	}
+	passwordHash := strings.TrimSpace(string(hashOutput))
+	if !strings.HasPrefix(passwordHash, "$2a$") && !strings.HasPrefix(passwordHash, "$2b$") {
+		return "", fmt.Errorf("Caddy returned an unexpected password hash")
+	}
+	return passwordHash, nil
 }
 
 func createDatabaseCertificates(domain string) error {
@@ -178,7 +194,7 @@ func createDatabaseCertificates(domain string) error {
 	return nil
 }
 
-func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) error {
+func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash, kafkaPasswordHash string) error {
 	if _, err := os.Stat(".env"); err == nil {
 		return fmt.Errorf(".env already exists; refusing to overwrite existing deployment configuration")
 	} else if !os.IsNotExist(err) {
@@ -233,6 +249,14 @@ func writeCustomDeploymentFiles(config CustomDeployConfig, passwordHash string) 
 		"INGESTION_TOPIC_PARTITIONS":       "8",
 		"CLICKHOUSE_KAFKA_CONSUMERS":       "8",
 		"COMPOSE_PROFILES":                 strings.Join(config.TemporalWorkerProfiles, ","),
+	}
+	if config.KafkaDomain != "" {
+		values["KAFKA_UI_DOMAIN"] = config.KafkaDomain
+		values["KAFKA_UI_USERNAME"] = config.KafkaUsername
+		values["KAFKA_UI_PASSWORD_HASH"] = kafkaPasswordHash
+		profiles := append([]string(nil), config.TemporalWorkerProfiles...)
+		profiles = append(profiles, "kafka-ui")
+		values["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
 	}
 	if config.AIProvider != "" && config.AIProvider != "none" {
 		provider := strings.ToLower(config.AIProvider)

@@ -65,6 +65,9 @@ func newCustomModel() (customModel, error) {
 	fields := []customField{
 		{key: "domain", label: "PostHog domain", help: "DNS A record must point to this server; enter host only", value: "dwg.asia"},
 		{key: "temporal_domain", label: "Temporal UI domain", help: "Create a DNS A record for this host too", value: "temporal.dwg.asia"},
+		{key: "kafka_domain", label: "Kafka UI domain (optional)", help: "Leave empty to disable Kafka UI; otherwise create a DNS A record", optional: true},
+		{key: "kafka_username", label: "Kafka UI login username", help: "Used only when Kafka UI is enabled", value: "admin", optional: true},
+		{key: "kafka_password", label: "Kafka UI login password", help: "At least 20 characters when Kafka UI is enabled", secret: true, optional: true},
 		{key: "dockerhub_user", label: "Docker Hub username", help: "Used for docker login on this server", value: "diweigao"},
 		{key: "dockerhub_token", label: "Docker Hub access token", help: "Prefer a read-only token; stored only in Docker's credential config", secret: true},
 		{key: "postgres_user", label: "PostgreSQL username", help: "External PostgreSQL login; letters, digits, underscore", value: "posthog"},
@@ -273,8 +276,11 @@ func validateCustomField(field customField) error {
 	if value == "" && !field.optional {
 		return fmt.Errorf("%s is required", field.label)
 	}
+	if value == "" && field.optional {
+		return nil
+	}
 	switch field.key {
-	case "domain", "temporal_domain":
+	case "domain", "temporal_domain", "kafka_domain":
 		if strings.Contains(value, "://") || strings.ContainsAny(value, "/ \t\n") || net.ParseIP(value) != nil || !strings.Contains(value, ".") {
 			return fmt.Errorf("enter a hostname, not a URL or IP address")
 		}
@@ -286,7 +292,7 @@ func validateCustomField(field customField) error {
 		if len(value) < 20 || !databasePasswordPattern.MatchString(value) {
 			return fmt.Errorf("use at least 20 characters containing only letters, numbers, underscore, or hyphen")
 		}
-	case "caddy_password":
+	case "caddy_password", "kafka_password":
 		if len(value) < 20 {
 			return fmt.Errorf("use a password with at least 20 characters")
 		}
@@ -318,6 +324,7 @@ func customConfigFromFields(fields []customField) (core.CustomDeployConfig, erro
 	}
 	config := core.CustomDeployConfig{
 		Domain: values["domain"], TemporalDomain: values["temporal_domain"],
+		KafkaDomain: values["kafka_domain"], KafkaUsername: values["kafka_username"], KafkaPassword: values["kafka_password"],
 		DockerHubUsername: values["dockerhub_user"], DockerHubToken: values["dockerhub_token"],
 		PostgresUser: values["postgres_user"], PostgresPassword: values["postgres_password"],
 		ClickHouseAppPassword: values["clickhouse_app_password"], ClickHouseAPISecret: values["clickhouse_api_password"], ClickHouseReaderPassword: values["clickhouse_reader_password"],
@@ -325,6 +332,17 @@ func customConfigFromFields(fields []customField) (core.CustomDeployConfig, erro
 		CaddyUsername: values["caddy_username"], CaddyPassword: values["caddy_password"],
 		AIProvider: values["ai_provider"], AIModel: values["ai_model"], AIBaseURL: values["ai_base_url"], AIAPIKey: values["ai_api_key"],
 		AppImage: values["app_image"], NodeImage: values["node_image"], FeatureFlagsImage: values["feature_flags_image"],
+	}
+	if config.KafkaDomain != "" {
+		if config.KafkaUsername == "" || len(config.KafkaPassword) < 20 {
+			return config, fmt.Errorf("Kafka UI requires a username and a password of at least 20 characters")
+		}
+		if err := core.ValidateDatabaseUsername(config.KafkaUsername); err != nil {
+			return config, fmt.Errorf("invalid Kafka UI username: %w", err)
+		}
+		if strings.EqualFold(config.KafkaDomain, config.Domain) || strings.EqualFold(config.KafkaDomain, config.TemporalDomain) {
+			return config, fmt.Errorf("Kafka UI requires a distinct domain")
+		}
 	}
 	if config.AIProvider != "" && config.AIProvider != "none" && (config.AIModel == "" || config.AIAPIKey == "") {
 		return config, fmt.Errorf("AI provider requires a model and API key")

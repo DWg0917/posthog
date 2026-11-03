@@ -15,6 +15,21 @@ A TUI (Terminal User Interface) and CI-compatible installer for PostHog self-hos
 
 ## Usage
 
+### Optional Kafka UI
+
+Kafka UI is disabled by default. In custom interactive deployment, enter a distinct Kafka UI domain, username, and password to enable it, or leave the domain blank to disable it. Point the domain's DNS A record to the server before deploying. The installer stores a bcrypt password hash and enables the `kafka-ui` profile; it does not store the plaintext password. Keep the password in a secure password manager.
+
+For an existing deployment, configure `KAFKA_UI_DOMAIN`, `KAFKA_UI_USERNAME`, and `KAFKA_UI_PASSWORD_HASH` in the private `.env` file. Use a bcrypt hash produced by `caddy hash-password`, and single-quote the hash in `.env` so Compose preserves its dollar signs.
+
+Add `kafka-ui` to the existing comma-separated `COMPOSE_PROFILES` value, preserving all existing profiles. Then run:
+
+```bash
+sudo docker compose --env-file .env -f docker-compose.hobby.yml up -d kafka_ui
+sudo docker compose --env-file .env -f docker-compose.hobby.yml up -d --no-deps --force-recreate proxy
+```
+
+Open `https://<KAFKA_UI_DOMAIN>` and sign in with the configured username and password. Caddy handles HTTPS and authentication; Kafka UI has no published host port. The UI can modify Kafka data, so restrict access to trusted users. To disable the UI, remove `kafka-ui` from `COMPOSE_PROFILES` and stop the `kafka_ui` service.
+
 ### Interactive mode (default)
 
 ```bash

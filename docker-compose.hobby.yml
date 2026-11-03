@@ -467,12 +467,21 @@ services:
             TEMPORAL_UI_DOMAIN: ${TEMPORAL_UI_DOMAIN:-disabled.invalid}
             TEMPORAL_UI_USERNAME: ${TEMPORAL_UI_USERNAME:-admin}
             TEMPORAL_UI_PASSWORD_HASH: ${TEMPORAL_UI_PASSWORD_HASH:-invalid}
+            KAFKA_UI_DOMAIN: ${KAFKA_UI_DOMAIN:-http://127.0.0.1:18081}
+            KAFKA_UI_USERNAME: ${KAFKA_UI_USERNAME:-admin}
+            KAFKA_UI_PASSWORD_HASH: ${KAFKA_UI_PASSWORD_HASH:-invalid}
             CADDY_EXTRA_CONFIG: |
                 {$$TEMPORAL_UI_DOMAIN} {
                     basic_auth {
                         {$$TEMPORAL_UI_USERNAME} {$$TEMPORAL_UI_PASSWORD_HASH}
                     }
                     reverse_proxy temporal-ui:8080
+                }
+                {$$KAFKA_UI_DOMAIN} {
+                    basic_auth {
+                        {$$KAFKA_UI_USERNAME} {$$KAFKA_UI_PASSWORD_HASH}
+                    }
+                    reverse_proxy kafka_ui:8080
                 }
         depends_on:
             - web
@@ -558,6 +567,17 @@ services:
         logging: *default-logging
         depends_on:
             - temporal
+    kafka_ui:
+        extends:
+            file: docker-compose.base.yml
+            service: kafka_ui
+        profiles: ['kafka-ui']
+        logging: *default-logging
+        environment:
+            DYNAMIC_CONFIG_ENABLED: 'false'
+        depends_on:
+            kafka:
+                condition: service_healthy
     temporal-ui:
         extends:
             file: docker-compose.base.yml
