@@ -122,14 +122,16 @@ class Migration(AsyncMigrationDefinition):
             SELECT 1
             FROM events
             WHERE
-                empty(person_id) OR
-                person_created_at = toDateTime(0) OR
-                person_properties = '' OR
-                group0_properties = '' OR
-                group1_properties = '' OR
-                group2_properties = '' OR
-                group3_properties = '' OR
-                group4_properties = ''
+                (person_mode != 'propertyless' AND (
+                    empty(person_id) OR
+                    person_created_at = toDateTime(0) OR
+                    person_properties = ''
+                )) OR
+                (notEmpty(`$group_0`) AND group0_properties = '') OR
+                (notEmpty(`$group_1`) AND group1_properties = '') OR
+                (notEmpty(`$group_2`) AND group2_properties = '') OR
+                (notEmpty(`$group_3`) AND group3_properties = '') OR
+                (notEmpty(`$group_4`) AND group4_properties = '')
             LIMIT 1
             """
         )

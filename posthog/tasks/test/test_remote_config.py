@@ -85,6 +85,13 @@ class TestRemoteConfig(BaseTest):
         update_team_remote_config(self.team.id)
         mock_sync.assert_called_once_with(bypass_recordings_quota_cache=False)
 
+    def test_new_remote_config_is_saved_before_sync(self) -> None:
+        RemoteConfig.objects.filter(team=self.team).delete()
+        with patch.object(RemoteConfig, "sync", autospec=True) as mock_sync:
+            update_team_remote_config(self.team.id)
+        remote_config = mock_sync.call_args.args[0]
+        assert not remote_config._state.adding
+
 
 class TestRemoteConfigCacheTasks(BaseTest):
     @parameterized.expand(

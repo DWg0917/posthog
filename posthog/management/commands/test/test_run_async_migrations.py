@@ -1,4 +1,5 @@
 import logging
+from unittest.mock import patch
 
 import pytest
 
@@ -63,7 +64,12 @@ def test_complete_noop_migrations(caplog):
     output = "\n".join([rec.message for rec in caplog.records])
     assert "0001_events_sample_by" in output
 
-    call_command("run_async_migrations", "--complete-noop-migrations")
+    with (
+        patch("posthog.async_migrations.utils.async_migrations_emails_enabled", return_value=True),
+        patch("posthog.tasks.email.send_async_migration_complete_email.delay") as send_email,
+    ):
+        call_command("run_async_migrations", "--complete-noop-migrations")
+        send_email.assert_not_called()
 
     # And after running, it shouldn't be
     caplog.clear()

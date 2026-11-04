@@ -161,4 +161,4 @@ def handle_complete_noop_migrations():
         if not is_required:
             dependency_ok, _ = is_migration_dependency_fulfilled(migration_name)
             if dependency_ok:
-                complete_migration(sm)
+                complete_migration(sm, email=False)

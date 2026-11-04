@@ -8,7 +8,7 @@ from posthog.async_migrations.definition import (
     AsyncMigrationOperationSQL,
 )
 from posthog.clickhouse.client import sync_execute
-from posthog.cloud_utils import is_cloud
+from posthog.cloud_utils import is_cloud, is_hobby
 from posthog.constants import AnalyticsDBMS
 from posthog.version_requirement import ServiceVersionRequirement
 
@@ -43,7 +43,7 @@ class Migration(AsyncMigrationDefinition):
     service_version_requirements = [ServiceVersionRequirement(service="clickhouse", supported_version=">=22.3.0")]
 
     def is_required(self) -> bool:
-        return is_cloud()
+        return is_cloud() and not is_hobby()
 
     def _get_partitions_to_move(self):
         # Partition bounds come from the request body (AsyncMigration.parameters), so they are

@@ -141,6 +141,8 @@ sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web py
 echo "Applying hobby personhog migrations..."
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py apply_persons_migrations --hobby
 sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm web python manage.py migrate_clickhouse
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm -e SKIP_ASYNC_MIGRATIONS_SETUP=1 web python manage.py run_async_migrations --complete-noop-migrations
+sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm -e SKIP_ASYNC_MIGRATIONS_SETUP=1 web python manage.py run_async_migrations --check
 POSTGRES_USER=${POSTGRES_USER:-$(env_value POSTGRES_USER)}
 POSTGRES_USER=${POSTGRES_USER:-posthog}
 if [[ "$(timeout 30s sudo -n docker exec "$(sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q db | head -n1)" psql -U "$POSTGRES_USER" -d posthog -Atc "SELECT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'cyclotron_jobs')" 2>/dev/null || true)" != "t" ]] then for migration in rust/cyclotron-node-migrations/*.sql; do sudo -n docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db psql -U "$POSTGRES_USER" -d posthog -v ON_ERROR_STOP=1 < "$migration" || exit 1; done; fi

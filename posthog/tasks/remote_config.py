@@ -28,12 +28,12 @@ def update_team_remote_config(team_id: int, bypass_recordings_quota_cache: bool 
         logger.exception("Team does not exist", team_id=team_id)
         return
 
-    try:
-        remote_config = RemoteConfig.objects.get(team=team)
-    except RemoteConfig.DoesNotExist:
-        remote_config = RemoteConfig(team=team)
+    remote_config, created = RemoteConfig.objects.get_or_create(team=team, defaults={"config": {}})
 
-    remote_config.sync(bypass_recordings_quota_cache=bypass_recordings_quota_cache)
+    if created:
+        remote_config.sync(force=True, bypass_recordings_quota_cache=bypass_recordings_quota_cache)
+    else:
+        remote_config.sync(bypass_recordings_quota_cache=bypass_recordings_quota_cache)
 
 
 @shared_task(ignore_result=True, queue=CeleryQueue.DEFAULT.value)

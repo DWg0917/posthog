@@ -1,10 +1,12 @@
 import time
 from collections import Counter
 
+from botocore.exceptions import NoCredentialsError
 from celery import shared_task
 from prometheus_client import Gauge
 from structlog import get_logger
 
+from posthog.cloud_utils import is_hobby
 from posthog.metrics import pushed_metrics_registry
 from posthog.tasks.utils import CeleryQueue
 
@@ -23,6 +25,10 @@ def poll_ses_account_reputation() -> None:
     """
     try:
         reputation = SESProvider().get_account_reputation()
+    except NoCredentialsError:
+        if not is_hobby():
+            logger.warning("SES account reputation poll failed", exc_info=True)
+        return
     except Exception:
         # Regions without SES access (self-hosted, dev) land here every tick; a stale
         # last_poll_timestamp is the alertable signal for genuine poller breakage in cloud.

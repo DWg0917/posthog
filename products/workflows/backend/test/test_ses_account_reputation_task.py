@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 from parameterized import parameterized
 from prometheus_client import CollectorRegistry
 
@@ -72,3 +72,22 @@ class TestPollSesAccountReputation(TestCase):
         poll_ses_account_reputation()
 
         self.mock_registry_factory.assert_not_called()
+
+    @patch("products.workflows.backend.tasks.ses_account_reputation.is_hobby", return_value=True)
+    @patch("products.workflows.backend.tasks.ses_account_reputation.logger")
+    def test_missing_ses_credentials_does_not_log_a_warning(self, logger, _is_hobby):
+        self.mock_provider.get_account_reputation.side_effect = NoCredentialsError()
+
+        poll_ses_account_reputation()
+
+        logger.warning.assert_not_called()
+        self.mock_registry_factory.assert_not_called()
+
+    @patch("products.workflows.backend.tasks.ses_account_reputation.is_hobby", return_value=False)
+    @patch("products.workflows.backend.tasks.ses_account_reputation.logger")
+    def test_missing_cloud_ses_credentials_remain_visible(self, logger, _is_hobby):
+        self.mock_provider.get_account_reputation.side_effect = NoCredentialsError()
+
+        poll_ses_account_reputation()
+
+        logger.warning.assert_called_once()
