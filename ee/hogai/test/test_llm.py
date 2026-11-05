@@ -14,9 +14,50 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.outputs import ChatGeneration, Generation, LLMResult
 from parameterized import parameterized
 
+from posthog.models import Team, User
 from posthog.settings import BASE_DIR
 
-from ee.hogai.llm import BILLING_SKIPPED_COUNTER, PROJECT_ORG_USER_CONTEXT_PROMPT, MaxChatAnthropic, MaxChatOpenAI
+from ee.hogai.llm import (
+    BILLING_SKIPPED_COUNTER,
+    PROJECT_ORG_USER_CONTEXT_PROMPT,
+    MaxChatAnthropic,
+    MaxChatOpenAI,
+    MaxChatQwen,
+    get_configured_chat_model,
+)
+
+
+class TestCompatibleModelParameters(SimpleTestCase):
+    @parameterized.expand(
+        [
+            ("openai_kimi", MaxChatOpenAI, "kimi-k3", 1.0),
+            ("qwen_kimi", MaxChatQwen, "kimi-k3", 1.0),
+            ("namespaced_kimi", MaxChatQwen, "kimi/kimi-k3", 1.0),
+            ("openai_unchanged", MaxChatOpenAI, "gpt-4o", 0.7),
+            ("qwen_unchanged", MaxChatQwen, "qwen-plus", 0.7),
+        ]
+    )
+    def test_model_temperature_in_outgoing_request(
+        self, _name: str, model_class: type[MaxChatOpenAI] | type[MaxChatQwen], model: str, expected_temperature: float
+    ) -> None:
+        with self.settings(MIMO_API_KEY=""):
+            llm = model_class(
+                user=User(), team=Team(), model=model, api_key="test-api-key", temperature=0.7, inject_context=False
+            )
+            payload = llm._get_request_payload([HumanMessage(content="Hello")], temperature=0.7)
+        self.assertEqual(payload["temperature"], expected_temperature)
+        self.assertEqual(payload["model"], model)
+        self.assertEqual(payload["messages"], [{"content": "Hello", "role": "user"}])
+
+    def test_qwen_factory_routes_insight_generators_to_configured_provider(self) -> None:
+        with self.settings(AI_PROVIDER="qwen", AI_MODEL="kimi-k3", QWEN_API_KEY="test-api-key"):
+            llm = get_configured_chat_model(
+                model="gpt-4.1", user=User(), team=Team(), use_responses_api=True, output_version="responses/v1"
+            )
+        self.assertIsInstance(llm, MaxChatQwen)
+        self.assertEqual(llm.model_name, "kimi-k3")
+        self.assertEqual(llm.openai_api_key.get_secret_value(), "test-api-key")
+        self.assertFalse(llm.use_responses_api)
 
 
 @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key", "ANTHROPIC_API_KEY": "test-api-key"})

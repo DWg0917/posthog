@@ -1,10 +1,18 @@
 from posthog.test.base import BaseTest
 from unittest.mock import Mock, patch
 
-from langchain_core.messages import AIMessage as LangchainAIMessage
+from django.test import SimpleTestCase
+
+from langchain_core.messages import (
+    AIMessage as LangchainAIMessage,
+    HumanMessage as LangchainHumanMessage,
+)
 from langchain_core.runnables import RunnableLambda
+from parameterized import parameterized
 
 from posthog.schema import HumanMessage
+
+from posthog.models import Team, User
 
 from products.posthog_ai.backend.models.assistant import Conversation
 
@@ -16,6 +24,16 @@ from ee.hogai.utils.types.base import ConversationTitleAction
 
 def _raise(_):
     raise RuntimeError("boom")
+
+
+class TestTitleModelParameters(SimpleTestCase):
+    @parameterized.expand([("kimi-k3", False), ("qwen-plus", None)])
+    def test_short_title_request_thinking_mode(self, model: str, expected_thinking: bool | None) -> None:
+        with self.settings(AI_PROVIDER="qwen", AI_MODEL=model, QWEN_API_KEY="test-api-key"):
+            node = TitleGeneratorNode(Team(), User())
+            payload = node._model._get_request_payload([LangchainHumanMessage(content="Analytics test")])
+        self.assertEqual(payload.get("extra_body", {}).get("enable_thinking"), expected_thinking)
+        self.assertEqual(payload["model"], model)
 
 
 class TestTitleGenerator(BaseTest):

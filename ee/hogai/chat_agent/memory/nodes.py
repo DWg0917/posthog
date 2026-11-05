@@ -1,7 +1,9 @@
 from collections.abc import Sequence
+from functools import partial
 from typing import Literal, Optional, Union, cast
 from uuid import uuid4
 
+from django.conf import settings
 from django.utils import timezone
 
 from langchain_core.messages import (
@@ -42,8 +44,6 @@ from ee.hogai.artifacts.utils import unwrap_visualization_artifact_content
 from ee.hogai.core.agent_modes.const import SlashCommandName
 from ee.hogai.core.mixins import AssistantContextMixin
 from ee.hogai.core.node import AssistantNode
-from django.conf import settings
-
 from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI, MaxChatQwen
 from ee.hogai.utils.helpers import filter_and_merge_messages, find_last_message_of_type
 from ee.hogai.utils.markdown import remove_markdown
@@ -74,7 +74,9 @@ from .prompts import (
 
 
 def _build_memory_model(*, user, team, model: str, temperature: float, stop_sequences=None, billable: bool = False):
-    configured_provider = (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+    configured_provider = (
+        (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+    )
     kwargs = {"temperature": temperature, "disable_streaming": True, "user": user, "team": team, "billable": billable}
     if stop_sequences is not None:
         kwargs["stop_sequences"] = stop_sequences
@@ -84,7 +86,9 @@ def _build_memory_model(*, user, team, model: str, temperature: float, stop_sequ
         return MaxChatQwen(model=getattr(settings, "AI_MODEL", "") or model, **kwargs)
     if configured_provider in {"mimo", "xiaomi"} or (not configured_provider and settings.MIMO_API_KEY):
         return MaxChatOpenAI(model=settings.MIMO_SUPPORTED_MODELS[0], **kwargs)
-    if configured_provider == "custom" or (not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL):
+    if configured_provider == "custom" or (
+        not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL
+    ):
         custom_models = [item.strip() for item in settings.CUSTOM_LLM_MODELS.split(",") if item.strip()]
         return MaxChatCustomLLM(model=custom_models[0] if custom_models else model, **kwargs)
     return MaxChatOpenAI(model=model, **kwargs)
@@ -430,7 +434,14 @@ class MemoryCollectorNode(MemoryOnboardingShouldRunMixin):
         prompt = ChatPromptTemplate.from_messages(
             [("system", MEMORY_COLLECTOR_PROMPT)], template_format="mustache"
         ) + await self._aconstruct_messages(state)
-        chain = prompt | self._model | check_memory_collection_completed
+        chain = (
+            prompt
+            | self._model
+            | partial(
+                check_memory_collection_completed,
+                allowed_tool_names={tool.__name__ for tool in memory_collector_tools},
+            )
+        )
 
         response = await chain.ainvoke(
             {

@@ -50,6 +50,7 @@ from ee.hogai.utils.anthropic import add_cache_control, convert_to_anthropic_mes
 from ee.hogai.utils.conversation_summarizer import AnthropicConversationSummarizer
 from ee.hogai.utils.feature_flags import get_llm_gateway_variant
 from ee.hogai.utils.helpers import convert_tool_messages_to_dict, normalize_ai_message
+from ee.hogai.utils.openai import convert_to_openai_messages
 from ee.hogai.utils.types import (
     AssistantMessageUnion,
     AssistantNodeName,
@@ -186,7 +187,8 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         system_prompts = cast(list[BaseMessage], system_prompts)
         assert len(system_prompts) > 0
         # Mark the longest default prefix as cacheable
-        add_cache_control(system_prompts[0], ttl="1h")
+        if not self._uses_openai_compatible_messages():
+            add_cache_control(system_prompts[0], ttl="1h")
 
         message = await model.ainvoke(system_prompts + langchain_messages, config)
 
@@ -274,8 +276,8 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         gateway_kwargs = self._get_gateway_kwargs()
         is_routing_through_llm_gateway = bool(gateway_kwargs)
         configured_provider = (
-            getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")
-        ).strip().lower()
+            (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+        )
 
         if configured_provider == "qwen":
             base_model = MaxChatQwen(
@@ -322,9 +324,9 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         elif configured_provider == "custom" or (
             not configured_provider and settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL
         ):
-            custom_models = [model.strip() for model in settings.CUSTOM_LLM_MODELS.split(',') if model.strip()]
+            custom_models = [model.strip() for model in settings.CUSTOM_LLM_MODELS.split(",") if model.strip()]
             base_model = MaxChatCustomLLM(
-                model=custom_models[0] if custom_models else 'gpt-4o',
+                model=custom_models[0] if custom_models else "gpt-4o",
                 streaming=True,
                 stream_usage=True,
                 user=self._user,
@@ -338,25 +340,24 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
             )
         else:
             base_model = MaxChatAnthropic(
-                model='claude-sonnet-4-6',
+                model="claude-sonnet-4-6",
                 streaming=True,
                 stream_usage=True,
                 user=self._user,
                 team=self._team,
                 betas=[
-                    'interleaved-thinking-2025-05-14',
-                    'fine-grained-tool-streaming-2025-05-14',
+                    "interleaved-thinking-2025-05-14",
+                    "fine-grained-tool-streaming-2025-05-14",
                 ],
                 max_tokens=16384,
                 thinking=self.THINKING_CONFIG,
-                model_kwargs={'output_config': {'effort': 'medium'}},
+                model_kwargs={"output_config": {"effort": "medium"}},
                 conversation_start_dt=state.start_dt,
                 billable=True,
                 bypass_proxy=is_routing_through_llm_gateway,
                 posthog_properties=self._get_agent_mode_posthog_properties(state),
                 **gateway_kwargs,
             )
-
 
         # The agent can operate in loops. Since insight building is an expensive operation, we want to limit a recursion depth.
         # This will remove the functions, so the agent doesn't have any other option but to exit.
@@ -376,7 +377,6 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         # `assistant` messages must be contiguous with the respective `tool` messages.
         tool_result_messages = self._get_tool_map(conversation_window)
 
-        # Convert to Anthropic messages
         history = self._convert_to_langchain_messages(conversation_window, tool_result_messages)
 
         # Force the agent to stop if the tool call limit is reached.
@@ -417,10 +417,21 @@ class AgentExecutable(BaseAgentLoopRootExecutable):
         tool_result_messages: Mapping[str, AssistantToolCallMessage],
     ) -> list[BaseMessage]:
         """Convert a conversation window to a list of Langchain messages."""
+        if self._uses_openai_compatible_messages():
+            return convert_to_openai_messages(messages, tool_result_messages)
         return convert_to_anthropic_messages(messages, tool_result_messages)
+
+    def _uses_openai_compatible_messages(self) -> bool:
+        provider = (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+        return provider in {"qwen", "glm", "zhipu", "zhipuai", "mimo", "xiaomi", "custom"} or (
+            not provider
+            and bool(settings.MIMO_API_KEY or (settings.CUSTOM_LLM_API_KEY and settings.CUSTOM_LLM_BASE_URL))
+        )
 
     def _add_cache_control_to_last_message(self, messages: list[BaseMessage]) -> list[BaseMessage]:
         """Add cache control to the last message."""
+        if self._uses_openai_compatible_messages():
+            return messages
         for i in range(len(messages) - 1, -1, -1):
             maybe_content_arr = messages[i].content
             if (

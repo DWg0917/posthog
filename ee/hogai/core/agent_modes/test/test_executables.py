@@ -1,9 +1,12 @@
 from posthog.test.base import BaseTest, ClickhouseTestMixin
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from django.test import SimpleTestCase
+
 from langchain_core.messages import (
     AIMessage as LangchainAIMessage,
     HumanMessage as LangchainHumanMessage,
+    ToolMessage as LangchainToolMessage,
 )
 from langchain_core.runnables import RunnableConfig
 from parameterized import parameterized
@@ -21,6 +24,10 @@ from posthog.models import Team, User
 
 from ee.hogai.chat_agent.mode_manager import ChatAgentModeManager
 from ee.hogai.context import AssistantContextManager
+from ee.hogai.core.agent_modes.executables import AgentExecutable
+from ee.hogai.core.agent_modes.prompt_builder import AgentPromptBuilder
+from ee.hogai.core.agent_modes.toolkit import AgentToolkitManager
+from ee.hogai.llm import MaxChatQwen
 from ee.hogai.tool_errors import MaxToolError, MaxToolFatalError, MaxToolRetryableError, MaxToolTransientError
 from ee.hogai.tools.read_taxonomy.core import ReadEvents
 from ee.hogai.utils.tests import FakeChatAnthropic, FakeChatOpenAI
@@ -68,6 +75,50 @@ def _create_agent_tools_node(
 
     # Use the mode manager's tools_node property which calls configure()
     return mode_manager.tools_node
+
+
+class TestCompatibleToolMessages(SimpleTestCase):
+    @parameterized.expand([("qwen", True), ("custom", True), ("", False)])
+    def test_tool_result_format_matches_configured_provider(self, provider: str, openai_format: bool) -> None:
+        user, team = User(), Team()
+        with self.settings(
+            AI_PROVIDER=provider,
+            LLM_PROVIDER="",
+            MIMO_API_KEY="",
+            CUSTOM_LLM_API_KEY="",
+            AI_MODEL="kimi-k3",
+            QWEN_API_KEY="test-api-key",
+        ):
+            node = AgentExecutable(
+                team=team,
+                user=user,
+                toolkit_manager_class=AgentToolkitManager,
+                prompt_builder_class=AgentPromptBuilder,
+                node_path=(),
+            )
+            history = node._construct_messages(
+                [
+                    HumanMessage(content="Inspect synthetic test events", id="test-human"),
+                    AssistantMessage(
+                        content="",
+                        id="test-assistant",
+                        tool_calls=[AssistantToolCall(id="test-tool", name="read_data", args={})],
+                    ),
+                    AssistantToolCallMessage(
+                        content="Synthetic test result", tool_call_id="test-tool", id="test-result"
+                    ),
+                ]
+            )
+            if not openai_format:
+                self.assertIsInstance(history[-1], LangchainHumanMessage)
+                self.assertEqual(history[-1].content[0]["type"], "tool_result")
+                return
+            self.assertIsInstance(history[-1], LangchainToolMessage)
+            llm = MaxChatQwen(user=user, team=team, model="kimi-k3", api_key="test-api-key", inject_context=False)
+            self.assertGreater(llm.get_num_tokens_from_messages(history), 0)
+            payload = llm._get_request_payload(history)
+            self.assertEqual(payload["messages"][-1]["role"], "tool")
+            self.assertEqual(payload["messages"][-1]["tool_call_id"], "test-tool")
 
 
 class TestAgentNode(ClickhouseTestMixin, BaseTest):

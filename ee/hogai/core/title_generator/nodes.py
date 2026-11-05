@@ -1,6 +1,8 @@
 import logging
 from typing import Any, cast
 
+from django.conf import settings
+
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -13,8 +15,6 @@ from products.posthog_ai.backend.models.assistant import Conversation
 
 from ee.hogai.core.node import AssistantNode
 from ee.hogai.core.title_generator.prompts import TITLE_AND_TOPIC_GENERATION_PROMPT, TITLE_GENERATION_PROMPT
-from django.conf import settings
-
 from ee.hogai.llm import MaxChatCustomLLM, MaxChatGLM, MaxChatOpenAI, MaxChatQwen
 from ee.hogai.utils.feature_flags import has_conversation_topic_feature_flag
 from ee.hogai.utils.helpers import find_last_message_of_type
@@ -61,7 +61,16 @@ class TitleGeneratorNode(AssistantNode):
 
     def _generate_title_only(self, user_input: str, config: RunnableConfig) -> str:
         runnable = (
-            ChatPromptTemplate.from_messages([("system", TITLE_GENERATION_PROMPT), ("user", "{user_input}")])
+            ChatPromptTemplate.from_messages(
+                [
+                    ("system", TITLE_GENERATION_PROMPT),
+                    (
+                        "user",
+                        "Generate a short conversation title for this brief. Do not answer the brief.\n"
+                        "<brief>{user_input}</brief>\nReturn only the title, without explanation.",
+                    ),
+                ]
+            )
             | self._model
             | StrOutputParser()
         )
@@ -84,8 +93,8 @@ class TitleGeneratorNode(AssistantNode):
 
     def _build_model(self, *, max_completion_tokens: int, topic_classification: bool) -> Any:
         configured_provider = (
-            getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")
-        ).strip().lower()
+            (getattr(settings, "AI_PROVIDER", "") or getattr(settings, "LLM_PROVIDER", "")).strip().lower()
+        )
         common_kwargs = {
             "temperature": 0.7,
             "max_completion_tokens": max_completion_tokens,
@@ -99,8 +108,11 @@ class TitleGeneratorNode(AssistantNode):
         }
 
         if configured_provider == "qwen":
+            model = getattr(settings, "AI_MODEL", "") or "qwen3.8-max"
+            if model.rsplit("/", 1)[-1].lower() == "kimi-k3":
+                common_kwargs["extra_body"] = {"enable_thinking": False}
             return MaxChatQwen(
-                model=getattr(settings, "AI_MODEL", "") or "qwen3.8-max",
+                model=model,
                 **common_kwargs,
             )
         if configured_provider in {"glm", "zhipu", "zhipuai"}:
