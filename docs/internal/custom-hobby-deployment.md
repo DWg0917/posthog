@@ -26,6 +26,30 @@ adds the source revision as an image label, and pushes the amd64 image.
 It uses an isolated temporary context and leaves the checkout unchanged.
 Deploy the published tag through the Go installer after verifying the build.
 
+## Database initialization and ingestion startup
+
+Hobby mounts only `init-db.sh` into ClickHouse's initialization directory.
+Development row policies require accounts from `users-dev.xml` and must not run with Hobby's `users.xml`.
+A failed initialization script stops later scripts; an automatic restart can then skip initialization because the data directory exists.
+
+`ingestion-general` waits for Kafka to become healthy and for `kafka-init` to finish successfully before starting its replicas.
+This prevents output-topic checks from racing topic creation.
+If topic initialization fails, fix that failure and retry deployment.
+The ingestion service stays stopped until initialization succeeds.
+These dependencies control Compose startup; they do not stop running ingestion replicas if Kafka later becomes unavailable.
+
+These changes use the existing images.
+Recreate affected services to apply Compose changes.
+An existing ClickHouse volume does not rerun initialization automatically.
+If initialization stopped at the development row policy, complete the missed steps with the container's configured credentials:
+
+```sh
+sudo docker compose --env-file .env -f docker-compose.hobby.yml exec -T clickhouse bash /docker-entrypoint-initdb.d/init-db.sh
+```
+
+This copies the format schemas and flushes system logs without recreating the database.
+Keep the existing data volumes.
+
 ## Optional Temporal worker groups
 
 The custom deployment wizard lets you select worker groups before deployment.

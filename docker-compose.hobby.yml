@@ -79,7 +79,7 @@ services:
             - zookeeper
         volumes:
             - ./posthog/idl:/idl
-            - ./docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+            - ./docker/clickhouse/docker-entrypoint-initdb.d/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
             - ./docker/clickhouse/config.xml:/etc/clickhouse-server/config.xml
             - ./docker/clickhouse/config.d/default.xml:/etc/clickhouse-server/config.d/default.xml
             - ./docker/clickhouse/config.d/hobby-auth.xml:/etc/clickhouse-server/config.d/hobby-auth.xml:ro
@@ -345,13 +345,21 @@ services:
             PERSONHOG_ADDR: 'personhog-router:50052'
             PERSONHOG_ENABLED: 'true'
         depends_on:
-            - db
-            - redis7
-            - clickhouse
-            - kafka
+            db:
+                condition: service_started
+            redis7:
+                condition: service_started
+            clickhouse:
+                condition: service_started
+            kafka:
+                condition: service_healthy
+            kafka-init:
+                condition: service_completed_successfully
             # The combined AI consumer's blob store healthchecks the ai-blobs bucket at startup
-            - objectstorage
-            - personhog-router
+            objectstorage:
+                condition: service_started
+            personhog-router:
+                condition: service_started
 
     ingestion-sessionreplay:
         extends:
