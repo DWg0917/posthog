@@ -692,7 +692,7 @@ services:
         extends:
             service: temporal-django-worker
         profiles: ['worker-exports']
-        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'batch-exports-task-queue,no-sandbox-python-django,video-export-task-queue,weekly-digest-task-queue']
+        command: ['python', 'manage.py', 'start_temporal_worker_group', '--task-queues', 'analytics-platform-task-queue,batch-exports-task-queue,no-sandbox-python-django,video-export-task-queue,weekly-digest-task-queue']
     temporal-django-worker-experiments-billing-tasks:
         extends:
             service: temporal-django-worker
