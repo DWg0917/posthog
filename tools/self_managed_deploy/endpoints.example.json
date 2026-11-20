@@ -1,0 +1,29 @@
+{
+  "postgres_url": "postgresql://posthog:replace-with-password@postgres.example.internal:5432/posthog",
+  "clickhouse_host": "clickhouse.example.internal",
+  "clickhouse_user": "posthog",
+  "clickhouse_password": "replace-with-password",
+  "clickhouse_secure": "true",
+  "kafka_hosts": "kafka-1.example.internal:9092,kafka-2.example.internal:9092",
+  "redis_url": "rediss://redis.example.internal:6380/0",
+  "valkey_host": "valkey.example.internal",
+  "valkey_port": 6380,
+  "object_storage_endpoint": "https://s3-api.example.internal",
+  "object_storage_access_key_id": "replace-with-access-key",
+  "object_storage_secret_access_key": "replace-with-secret-key",
+  "object_storage_region": "us-east-1",
+  "object_storage_public_endpoint": "https://s3-public.example.com",
+  "session_replay_endpoint": "https://replay-s3.example.internal",
+  "session_replay_access_key_id": "replace-with-access-key",
+  "session_replay_secret_access_key": "replace-with-secret-key",
+  "session_replay_region": "us-east-1",
+  "temporal_host": "temporal.example.internal:7233",
+  "etcd_endpoints": "https://etcd.example.internal:2379",
+  "domain": "posthog.example.com",
+  "trusted_proxy_cidrs": ["10.0.0.0/8"],
+  "service_environment_overrides": {
+    "web": {
+      "POSTHOG_POSTGRES_DIRECT_HOST": "postgres-direct.example.internal"
+    }
+  }
+}
