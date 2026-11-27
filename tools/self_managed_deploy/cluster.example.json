@@ -1,0 +1,21 @@
+{
+  "kafka_retention_ms": 3600000,
+  "client_cidrs": ["10.20.0.0/16"],
+  "nodes": [
+    {
+      "name": "data-1",
+      "address": "10.20.0.11",
+      "id": 1
+    },
+    {
+      "name": "data-2",
+      "address": "10.20.0.12",
+      "id": 2
+    },
+    {
+      "name": "data-3",
+      "address": "10.20.0.13",
+      "id": 3
+    }
+  ]
+}

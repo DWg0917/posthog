@@ -992,51 +992,13 @@ services:
         image: docker.io/redpandadata/redpanda:v25.1.9
         entrypoint: /bin/sh
         logging: *default-logging
-        command:
-            - -c
-            - |
-                set -x
-                echo "Waiting for Kafka broker to accept connections..."
-                TIMEOUT=60
-                ELAPSED=0
-                # Use rpk topic list as the readiness check - it's a simple operation
-                # that confirms the broker is accepting Kafka protocol requests
-                until rpk topic list --brokers kafka:9092 2>/dev/null; do
-                    echo "Kafka broker not ready yet (elapsed: $${ELAPSED}s)..."
-                    sleep 2
-                    ELAPSED=$$((ELAPSED + 2))
-                    if [ $$ELAPSED -ge $$TIMEOUT ]; then
-                        echo "Timeout waiting for Kafka broker after $${TIMEOUT}s"
-                        echo "Final attempt to list topics:"
-                        rpk topic list --brokers kafka:9092 || true
-                        exit 1
-                    fi
-                done
-                echo "Kafka broker is accepting requests, creating topics..."
-                # The topic list is docker/kafka/topics.txt, mounted below, shared with
-                # docker-compose.dev.yml so the two stacks cannot drift apart. That header
-                # explains what needs pre-creating.
-                # Note: $$ escapes $ for docker-compose variable substitution
-                # The PersonHog changelog's partition count must equal the one in
-                # personhog-etcd-init's seed, or the leader refuses to start.
-                TOPICS="$$(grep -vE '^[[:space:]]*#|^[[:space:]]*$$' /topics.txt) personhog_updates personhog_changelog_relay_dlq"
-                for topic in $$TOPICS; do
-                    if rpk topic create "$$topic" --brokers kafka:9092 -p 1 -r 1 2>&1; then
-                        echo "Topic $$topic created successfully"
-                    else
-                        if rpk topic list --brokers kafka:9092 | awk '{print $$1}' | grep -qx "$$topic"; then
-                            echo "Topic $$topic already exists, continuing"
-                        else
-                            echo "Failed to create topic $$topic"
-                            exit 1
-                        fi
-                    fi
-                done
-                echo "Final topic list:"
-                rpk topic list --brokers kafka:9092
-                echo "Topics ready"
+        environment:
+            KAFKA_HOSTS: kafka:9092
+            KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}
+        command: ["/init-topics.sh"]
         volumes:
             - ./posthog/docker/kafka/topics.txt:/topics.txt:ro
+            - ./posthog/docker/kafka/init-topics.sh:/init-topics.sh:ro
         depends_on:
             kafka:
                 condition: service_healthy
